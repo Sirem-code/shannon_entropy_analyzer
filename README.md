@@ -1,15 +1,17 @@
 # Shannon Entropy TUI
 
 A simple Textual-based terminal UI app that:
-- Computes Shannon entropy from network observation symbols.
-- Builds a Bernoulli process chart from binary events.
+- Listens to real network traffic from the current device interface.
+- Computes Shannon entropy from captured packet-symbol observations.
+- Builds a Bernoulli process chart from the same captured stream.
 
 ## What to enter
 
-- **Network symbols**: packet or state labels separated by commas or spaces.
-  - Example: `SYN ACK ACK FIN SYN`
-- **Bernoulli sequence**: binary observations (`0` or `1`) separated by commas or spaces.
-  - Example: `1 1 0 1 0 0 1`
+- **Listening duration (seconds)**: how long the sniffer runs.
+  - Example: `10`
+- **Interface (optional)**: leave blank to use the default active interface.
+- **Target event symbol**: symbol treated as Bernoulli success (1).
+  - Example: `TCP` or `DNS/UDP`
 
 ## Run
 
@@ -17,6 +19,12 @@ A simple Textual-based terminal UI app that:
 python -m pip install -r requirements.txt
 python app.py
 ```
+
+## Important for packet capture
+
+- Packet sniffing may require elevated privileges.
+- On Windows, install Npcap if capture is unavailable.
+- If no packets are captured, increase the listening duration or generate traffic during capture.
 
 ## Notes
 
@@ -27,6 +35,6 @@ H(X) = -\sum_i p(x_i)\log_2 p(x_i)
 $$
 
 - The Bernoulli chart displays:
-  - The raw binary sequence
+  - A binary projection of captured symbols (1 for target symbol, else 0)
   - Running success rate $\hat p_n$
   - An ASCII plot of running success rate over trials

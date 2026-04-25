@@ -3,11 +3,16 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from math import log2
-from typing import Iterable, List
+from typing import Iterable
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Button, Footer, Header, Input, Label, Static
+
+try:
+    from scapy.all import ARP, ICMP, IP, IPv6, TCP, UDP, conf, sniff
+except Exception:  # pragma: no cover - import failure is handled at runtime
+    ARP = ICMP = IP = IPv6 = TCP = UDP = conf = sniff = None
 
 
 @dataclass
@@ -20,24 +25,76 @@ class EntropyResult:
     probabilities: list[tuple[str, float]]
 
 
-def parse_symbol_stream(raw: str) -> list[str]:
-    cleaned = raw.replace(",", " ").strip()
-    if not cleaned:
+@dataclass
+class CaptureResult:
+    interface: str
+    duration_seconds: float
+    symbols: list[str]
+
+
+def to_bernoulli_from_symbol_stream(symbols: list[str], success_symbol: str) -> list[int]:
+    if not symbols:
         return []
-    return [token for token in cleaned.split() if token]
+    if not success_symbol.strip():
+        raise ValueError("Target event symbol cannot be empty.")
+    target = success_symbol.strip()
+    return [1 if symbol == target else 0 for symbol in symbols]
 
 
-def parse_bernoulli_stream(raw: str) -> list[int]:
-    tokens = parse_symbol_stream(raw)
-    if not tokens:
-        return []
+def detect_default_interface() -> str:
+    if conf is None:
+        return "unknown"
+    return str(conf.iface)
 
-    values: list[int] = []
-    for token in tokens:
-        if token not in {"0", "1"}:
-            raise ValueError(f"Invalid Bernoulli token '{token}'. Use only 0 or 1.")
-        values.append(int(token))
-    return values
+
+def packet_to_symbol(packet: object) -> str:
+    if ARP is not None and packet.haslayer(ARP):
+        return "ARP"
+
+    if IP is not None and packet.haslayer(IP):
+        if TCP is not None and packet.haslayer(TCP):
+            tcp = packet[TCP]
+            ports = {int(tcp.sport), int(tcp.dport)}
+            if 443 in ports:
+                return "TLS/TCP"
+            if 80 in ports:
+                return "HTTP/TCP"
+            return "TCP"
+        if UDP is not None and packet.haslayer(UDP):
+            udp = packet[UDP]
+            ports = {int(udp.sport), int(udp.dport)}
+            if 53 in ports:
+                return "DNS/UDP"
+            if 67 in ports or 68 in ports:
+                return "DHCP/UDP"
+            return "UDP"
+        if ICMP is not None and packet.haslayer(ICMP):
+            return "ICMP"
+        return "IP-OTHER"
+
+    if IPv6 is not None and packet.haslayer(IPv6):
+        return "IPv6"
+
+    return "OTHER"
+
+
+def capture_network_symbols(duration_seconds: float, interface: str) -> CaptureResult:
+    if sniff is None:
+        raise RuntimeError(
+            "Scapy is unavailable. Install dependencies from requirements.txt first."
+        )
+
+    if duration_seconds <= 0:
+        raise ValueError("Listening duration must be greater than zero.")
+
+    iface = interface.strip() or detect_default_interface()
+    packets = sniff(iface=iface, timeout=duration_seconds, store=True)
+
+    symbols: list[str] = []
+    for packet in packets:
+        symbols.append(packet_to_symbol(packet))
+
+    return CaptureResult(interface=iface, duration_seconds=duration_seconds, symbols=symbols)
 
 
 def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
@@ -138,7 +195,7 @@ def format_entropy_report(result: EntropyResult) -> str:
     return "\n".join(lines)
 
 
-def format_bernoulli_report(sequence: list[int]) -> str:
+def format_bernoulli_report(sequence: list[int], success_symbol: str) -> str:
     if not sequence:
         return "Bernoulli Process\n-----------------\nNo Bernoulli sequence provided."
 
@@ -151,6 +208,7 @@ def format_bernoulli_report(sequence: list[int]) -> str:
     lines = [
         "Bernoulli Process",
         "-----------------",
+        f"Projection rule: 1 if symbol == '{success_symbol}', else 0",
         f"Trials: {len(sequence)}",
         f"Estimated p(success): {success_probability:.6f}",
         f"Sequence (first 50): {head}{tail}",
@@ -161,9 +219,21 @@ def format_bernoulli_report(sequence: list[int]) -> str:
     return "\n".join(lines)
 
 
+def format_capture_report(capture: CaptureResult) -> str:
+    return "\n".join(
+        [
+            "Capture Session",
+            "---------------",
+            f"Interface: {capture.interface}",
+            f"Listening duration: {capture.duration_seconds:.2f} seconds",
+            f"Captured packets: {len(capture.symbols)}",
+        ]
+    )
+
+
 class ShannonEntropyApp(App[None]):
     TITLE = "Shannon Entropy + Bernoulli Chart"
-    SUB_TITLE = "Textual TUI"
+    SUB_TITLE = "Live Network Listener"
 
     CSS = """
     Screen {
@@ -201,46 +271,82 @@ class ShannonEntropyApp(App[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="main"):
-            yield Label("Network symbol stream (comma/space-separated)", classes="block-title")
+            yield Label("Listening duration (seconds)", classes="block-title")
             yield Input(
-                value="SYN ACK ACK FIN SYN PSH ACK RST SYN ACK",
-                placeholder="Example: SYN ACK ACK FIN",
-                id="symbols",
+                value="10",
+                placeholder="Example: 10",
+                id="duration",
             )
 
-            yield Label("Bernoulli stream (0/1, comma/space-separated)", classes="block-title")
+            yield Label("Interface (optional, blank = default active interface)", classes="block-title")
             yield Input(
-                value="1 1 0 1 0 0 1 1 1 0 1 0",
-                placeholder="Example: 1 0 1 1 0",
-                id="bernoulli",
+                value="",
+                placeholder=f"Default: {detect_default_interface()}",
+                id="interface",
             )
 
-            yield Button("Compute Entropy + Chart", variant="primary", id="compute")
-            yield Static("Press the button to calculate.", id="output")
+            yield Label("Target event symbol for Bernoulli projection", classes="block-title")
+            yield Input(
+                value="TCP",
+                placeholder="Example: TCP",
+                id="target_symbol",
+            )
+
+            yield Button("Listen And Analyze", variant="primary", id="compute")
+            yield Static("Set duration and press Listen And Analyze.", id="output")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id != "compute":
             return
 
-        symbols_input = self.query_one("#symbols", Input).value
-        bernoulli_input = self.query_one("#bernoulli", Input).value
+        duration_input = self.query_one("#duration", Input).value
+        interface_input = self.query_one("#interface", Input).value
+        target_symbol = self.query_one("#target_symbol", Input).value
         output = self.query_one("#output", Static)
 
         try:
-            symbols = parse_symbol_stream(symbols_input)
-            entropy_result = compute_shannon_entropy(symbols)
+            duration_seconds = float(duration_input)
+            output.update(
+                f"Listening on interface '{interface_input.strip() or detect_default_interface()}' "
+                f"for {duration_seconds:.2f} seconds..."
+            )
 
-            bernoulli_sequence = parse_bernoulli_stream(bernoulli_input)
-            bernoulli_report = format_bernoulli_report(bernoulli_sequence)
+            capture = capture_network_symbols(duration_seconds, interface_input)
+            if not capture.symbols:
+                raise ValueError(
+                    "No packets were captured in the selected duration. "
+                    "Increase listening time or generate network activity."
+                )
+
+            entropy_result = compute_shannon_entropy(capture.symbols)
+
+            bernoulli_sequence = to_bernoulli_from_symbol_stream(capture.symbols, target_symbol)
+            bernoulli_report = format_bernoulli_report(bernoulli_sequence, target_symbol.strip())
 
             output.update(
-                format_entropy_report(entropy_result)
+                format_capture_report(capture)
+                + "\n\n"
+                + format_entropy_report(entropy_result)
                 + "\n\n"
                 + bernoulli_report
             )
+        except PermissionError:
+            output.update(
+                "Capture permission error:\n"
+                "Packet sniffing may require elevated privileges. "
+                "Run terminal as Administrator and ensure Npcap is installed."
+            )
+        except OSError as exc:
+            output.update(
+                "Capture error:\n"
+                f"{exc}\n"
+                "Check interface name and verify packet capture support is installed."
+            )
         except ValueError as exc:
             output.update(f"Input error:\n{exc}")
+        except RuntimeError as exc:
+            output.update(f"Runtime error:\n{exc}")
 
 
 if __name__ == "__main__":
