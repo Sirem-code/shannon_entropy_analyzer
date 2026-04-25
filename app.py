@@ -122,8 +122,13 @@ class ShannonEntropyApp(App[None]):
     Tab.--active, Tab.-active, ContentTab.-active, ContentTab.--active {
         color: #ffffff !important;
         background: $surface !important;
-        border-bottom: tall $primary;
         text-style: bold;
+    }
+
+    /* Style the animated underline to match the primary color */
+    Underline > .underline--bar {
+        color: $primary !important;
+        background: $primary 20% !important;
     }
 
     /* Specifically target the Analyzer tab by its generated ID */
