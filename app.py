@@ -238,8 +238,9 @@ class ShannonEntropyApp(App[None]):
         color: $primary-light;
         text-style: bold;
         margin-top: 1;
-        margin-bottom: 0;
+        margin-bottom: 1;
     }
+
 
     .card {
         background: $background;
@@ -873,11 +874,23 @@ class ShannonEntropyApp(App[None]):
         invokes the shift_detection algorithms to find anomalies, appends the
         results to the historical snapshot list, and updates all visual UI components.
         """
-        trends_metrics = self.query_one("#trends_metrics", Static)
-        analyzer_output = self.query_one("#analyzer_output", Static)
-        trends_output = self.query_one("#trends_output", Static)
-        packet_output = self.query_one("#packet_output", Static)
-        investigate_output = self.query_one("#investigate_output", Static)
+        if self._closing:
+            return
+
+        try:
+            trends_metrics = self.query_one("#trends_metrics", Static)
+            analyzer_output = self.query_one("#analyzer_output", Static)
+            trends_output = self.query_one("#trends_output", Static)
+            packet_output = self.query_one("#packet_output", Static)
+            investigate_output = self.query_one("#investigate_output", Static)
+            warnings_output = self.query_one("#warnings_output", Static)
+            status = self.query_one("#status", Label)
+            activity_meter = self.query_one("#activity_meter", ActivityMeter)
+            packet_counter = self.query_one("#packet_counter", Label)
+            protocol_log = self.query_one("#protocol_log", ProtocolLog)
+        except Exception:
+            return
+
         warnings_output = self.query_one("#warnings_output", Static)
         status = self.query_one("#status", Label)
 
