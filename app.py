@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import importlib
+from threading import Lock
+from time import monotonic
 from collections import Counter
 from dataclasses import dataclass
 from math import log2
 from typing import Any, Iterable
 
 from textual.app import App, ComposeResult
-from textual.containers import Container
-from textual.widgets import Button, Footer, Header, Input, Label, Static
+from textual.containers import Container, Horizontal
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane
 
 try:
     scapy_all = importlib.import_module("scapy.all")
@@ -23,6 +25,7 @@ TCP = getattr(scapy_all, "TCP", None)
 UDP = getattr(scapy_all, "UDP", None)
 conf = getattr(scapy_all, "conf", None)
 sniff = getattr(scapy_all, "sniff", None)
+AsyncSniffer = getattr(scapy_all, "AsyncSniffer", None)
 
 
 @dataclass
@@ -33,13 +36,6 @@ class EntropyResult:
     max_entropy_bits: float
     normalized_entropy: float
     probabilities: list[tuple[str, float]]
-
-
-@dataclass
-class CaptureResult:
-    interface: str
-    duration_seconds: float
-    symbols: list[str]
 
 
 def to_bernoulli_from_symbol_stream(symbols: list[str], success_symbol: str) -> list[int]:
@@ -93,25 +89,6 @@ def packet_to_symbol(packet: Any) -> str:
         return "IPv6"
 
     return "OTHER"
-
-
-def capture_network_symbols(duration_seconds: float, interface: str) -> CaptureResult:
-    if sniff is None:
-        raise RuntimeError(
-            "Scapy is unavailable. Install dependencies from requirements.txt first."
-        )
-
-    if duration_seconds <= 0:
-        raise ValueError("Listening duration must be greater than zero.")
-
-    iface = interface.strip() or detect_default_interface()
-    packets = sniff(iface=iface, timeout=duration_seconds, store=True)
-
-    symbols: list[str] = []
-    for packet in packets:
-        symbols.append(packet_to_symbol(packet))
-
-    return CaptureResult(interface=iface, duration_seconds=duration_seconds, symbols=symbols)
 
 
 def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
@@ -247,14 +224,20 @@ def format_bernoulli_report(sequence: list[int], success_symbol: str) -> str:
     return "\n".join(lines)
 
 
-def format_capture_report(capture: CaptureResult) -> str:
+def format_capture_report(
+    interface: str,
+    elapsed_seconds: float,
+    refresh_seconds: float,
+    packet_count: int,
+) -> str:
     return "\n".join(
         [
             "Capture Session",
             "---------------",
-            f"Interface: {capture.interface}",
-            f"Listening duration: {capture.duration_seconds:.2f} seconds",
-            f"Captured packets: {len(capture.symbols)}",
+            f"Interface: {interface}",
+            f"Elapsed listening time: {elapsed_seconds:.2f} seconds",
+            f"Refresh interval: every {refresh_seconds:.2f} seconds",
+            f"Captured packets: {packet_count}",
         ]
     )
 
@@ -288,88 +271,275 @@ class ShannonEntropyApp(App[None]):
         width: 100%;
     }
 
+    #status {
+        margin: 0 0 1 0;
+    }
+
+    #controls {
+        height: auto;
+        width: auto;
+        align-horizontal: left;
+    }
+
+    #start_capture {
+        width: 18;
+        margin-right: 1;
+    }
+
+    #stop_capture {
+        width: 18;
+    }
+
     #output {
         height: 1fr;
         border: round green;
         padding: 1;
         overflow: auto;
     }
+
+    #about_text {
+        border: round gray;
+        padding: 1;
+        height: 1fr;
+        overflow: auto;
+    }
     """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.capture_lock = Lock()
+        self.captured_symbols: list[str] = []
+        self.capture_interface = ""
+        self.refresh_seconds = 10.0
+        self.capture_started_at = 0.0
+        self.is_listening = False
+        self.sniffer: Any = None
+        self.refresh_timer: Any = None
+        self.last_output_text = ""
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="main"):
-            yield Label("Listening duration (seconds)", classes="block-title")
-            yield Input(
-                value="10",
-                placeholder="Example: 10",
-                id="duration",
-            )
+            with TabbedContent(initial="analyzer"):
+                with TabPane("Analyzer", id="analyzer"):
+                    yield Label("Refresh duration (seconds)", classes="block-title")
+                    yield Input(
+                        value="10",
+                        placeholder="Example: 10",
+                        id="duration",
+                    )
 
-            yield Label("Interface (optional, blank = default active interface)", classes="block-title")
-            yield Input(
-                value="",
-                placeholder=f"Default: {detect_default_interface()}",
-                id="interface",
-            )
+                    yield Label("Interface (optional, blank = default active interface)", classes="block-title")
+                    yield Input(
+                        value="",
+                        placeholder=f"Default: {detect_default_interface()}",
+                        id="interface",
+                    )
 
-            yield Button("Listen And Analyze", variant="primary", id="compute")
-            yield Static("Set duration and press Listen And Analyze.", id="output")
+                    with Horizontal(id="controls"):
+                        yield Button("Start Listening", variant="primary", id="start_capture")
+                        yield Button("Stop", variant="warning", id="stop_capture", disabled=True)
+
+                    yield Label("Status: Idle", id="status")
+                    yield Static("Press Start Listening to begin live capture and periodic analysis.", id="output")
+
+                with TabPane("About", id="about"):
+                    yield Static(
+                        "\n".join(
+                            [
+                                "What this app calculates",
+                                "------------------------",
+                                "From live captured packets, the app builds symbol classes (TCP, DNS/UDP, ARP, etc.).",
+                                "It computes Shannon entropy in bits:",
+                                "H(X) = -sum_i p_i log2(p_i)",
+                                "where p_i is the observed probability of symbol i.",
+                                "",
+                                "How to read it",
+                                "--------------",
+                                "Low H(X): traffic mix is concentrated and more predictable.",
+                                "High H(X): traffic mix is diverse and less predictable.",
+                                "Normalized H(X) is also shown for easier comparison across sessions.",
+                                "",
+                                "Why useful",
+                                "----------",
+                                "Provides a compact traffic-diversity fingerprint over time.",
+                                "Helps flag abrupt protocol-mix shifts for deeper investigation.",
+                                "",
+                                "Controls",
+                                "--------",
+                                "Start begins capture immediately. Refresh duration controls update cadence.",
+                                "Stop ends capture and keeps the latest report on screen.",
+                                "",
+                                "Packet capture may require Administrator privileges and Npcap on Windows.",
+                                "",
+                                "[link=\"https://en.wikipedia.org/wiki/Entropy_(information_theory)\"]Shannon entropy on Wikipedia[/link]",
+                            ]
+                        ),
+                        id="about_text",
+                    )
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id != "compute":
+        if event.button.id == "start_capture":
+            self.start_capture()
+            return
+        if event.button.id == "stop_capture":
+            self.stop_capture(user_requested=True)
+
+    def on_unmount(self) -> None:
+        self.stop_capture(user_requested=False)
+
+    def start_capture(self) -> None:
+        output = self.query_one("#output", Static)
+        status = self.query_one("#status", Label)
+
+        if self.is_listening:
+            status.update("Status: Already listening")
             return
 
-        duration_input = self.query_one("#duration", Input).value
-        interface_input = self.query_one("#interface", Input).value
-        output = self.query_one("#output", Static)
+        if AsyncSniffer is None:
+            status.update("Status: Error")
+            output.update(
+                "Runtime error:\nScapy AsyncSniffer is unavailable. "
+                "Install dependencies from requirements.txt first."
+            )
+            return
 
         try:
+            duration_input = self.query_one("#duration", Input).value
+            interface_input = self.query_one("#interface", Input).value
             duration_seconds = float(duration_input)
+            if duration_seconds <= 0:
+                raise ValueError("Refresh duration must be greater than zero.")
+
+            iface = interface_input.strip() or detect_default_interface()
+            self.refresh_seconds = duration_seconds
+            self.capture_interface = iface
+            self.capture_started_at = monotonic()
+            with self.capture_lock:
+                self.captured_symbols = []
+
+            self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
+            self.sniffer.start()
+            self.is_listening = True
+
+            self.refresh_timer = self.set_interval(self.refresh_seconds, self.refresh_live_report)
+            self.update_control_state()
+
+            status.update("Status: Listening...")
             output.update(
-                f"Listening on interface '{interface_input.strip() or detect_default_interface()}' "
-                f"for {duration_seconds:.2f} seconds..."
+                f"Live capture started on '{iface}'.\n"
+                f"Refreshing analysis every {self.refresh_seconds:.2f} seconds."
             )
-
-            capture = capture_network_symbols(duration_seconds, interface_input)
-            if not capture.symbols:
-                raise ValueError(
-                    "No packets were captured in the selected duration. "
-                    "Increase listening time or generate network activity."
-                )
-
-            entropy_result = compute_shannon_entropy(capture.symbols)
-            projection_symbol = dominant_symbol(capture.symbols)
-
-            bernoulli_sequence = to_bernoulli_from_symbol_stream(capture.symbols, projection_symbol)
-            bernoulli_report = format_bernoulli_report(bernoulli_sequence, projection_symbol)
-
-            output.update(
-                format_entropy_summary(entropy_result)
-                + "\n\n"
-                + format_capture_report(capture)
-                + "\n\n"
-                + format_entropy_report(entropy_result)
-                + "\n\n"
-                + bernoulli_report
-            )
+            self.refresh_live_report()
         except PermissionError:
+            status.update("Status: Error")
             output.update(
                 "Capture permission error:\n"
                 "Packet sniffing may require elevated privileges. "
                 "Run terminal as Administrator and ensure Npcap is installed."
             )
         except OSError as exc:
+            status.update("Status: Error")
             output.update(
                 "Capture error:\n"
                 f"{exc}\n"
                 "Check interface name and verify packet capture support is installed."
             )
         except ValueError as exc:
+            status.update("Status: Error")
             output.update(f"Input error:\n{exc}")
-        except RuntimeError as exc:
-            output.update(f"Runtime error:\n{exc}")
+
+    def stop_capture(self, user_requested: bool) -> None:
+        if not self.is_listening and not self.sniffer:
+            return
+
+        output = self.query_one("#output", Static)
+        status = self.query_one("#status", Label)
+
+        if self.refresh_timer is not None:
+            self.refresh_timer.stop()
+            self.refresh_timer = None
+
+        if self.sniffer is not None:
+            try:
+                self.sniffer.stop()
+            except Exception:
+                pass
+            self.sniffer = None
+
+        self.is_listening = False
+        self.update_control_state()
+        self.refresh_live_report()
+
+        if user_requested:
+            status.update("Status: Stopped")
+            output.update(self.last_output_text + "\n\nCapture stopped by user.")
+        else:
+            status.update("Status: Idle")
+
+    def update_control_state(self) -> None:
+        start_btn = self.query_one("#start_capture", Button)
+        stop_btn = self.query_one("#stop_capture", Button)
+        start_btn.disabled = self.is_listening
+        stop_btn.disabled = not self.is_listening
+
+    def _on_packet(self, packet: Any) -> None:
+        symbol = packet_to_symbol(packet)
+        with self.capture_lock:
+            self.captured_symbols.append(symbol)
+
+    def refresh_live_report(self) -> None:
+        output = self.query_one("#output", Static)
+        status = self.query_one("#status", Label)
+
+        with self.capture_lock:
+            symbols = list(self.captured_symbols)
+
+        elapsed = max(0.0, monotonic() - self.capture_started_at) if self.capture_started_at else 0.0
+
+        if not symbols:
+            report_text = (
+                format_capture_report(
+                    self.capture_interface or detect_default_interface(),
+                    elapsed,
+                    self.refresh_seconds,
+                    0,
+                )
+                + "\n\nAwaiting packets. Generate network activity or wait for next refresh."
+            )
+            self.last_output_text = report_text
+            output.update(report_text)
+            if self.is_listening:
+                status.update("Status: Listening...")
+            return
+
+        entropy_result = compute_shannon_entropy(symbols)
+        projection_symbol = dominant_symbol(symbols)
+        bernoulli_sequence = to_bernoulli_from_symbol_stream(symbols, projection_symbol)
+        bernoulli_report = format_bernoulli_report(bernoulli_sequence, projection_symbol)
+
+        report_text = (
+            format_entropy_summary(entropy_result)
+            + "\n\n"
+            + format_capture_report(
+                self.capture_interface or detect_default_interface(),
+                elapsed,
+                self.refresh_seconds,
+                len(symbols),
+            )
+            + "\n\n"
+            + format_entropy_report(entropy_result)
+            + "\n\n"
+            + bernoulli_report
+        )
+        self.last_output_text = report_text
+        output.update(report_text)
+
+        if self.is_listening:
+            status.update("Status: Listening...")
+        else:
+            status.update("Status: Done")
 
 
 if __name__ == "__main__":

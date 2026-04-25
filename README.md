@@ -4,10 +4,12 @@ A simple Textual-based terminal UI app that:
 - Listens to real network traffic from the current device interface.
 - Computes Shannon entropy from captured packet-symbol observations.
 - Builds a Bernoulli process chart from the same captured stream.
+- Supports live start/stop capture with periodic report refresh.
+- Includes an About tab explaining the model and usage.
 
 ## What to enter
 
-- **Listening duration (seconds)**: how long the sniffer runs.
+- **Refresh duration (seconds)**: how often on-screen analysis is refreshed while listening.
   - Example: `10`
 - **Interface (optional)**: leave blank to use the default active interface.
 
@@ -23,6 +25,12 @@ python app.py
 - Packet sniffing may require elevated privileges.
 - On Windows, install Npcap if capture is unavailable.
 - If no packets are captured, increase the listening duration or generate traffic during capture.
+
+## Live controls
+
+- Click **Start Listening** to begin packet capture immediately.
+- The analysis refreshes every configured duration while capture is active.
+- Click **Stop** to end capture and keep the final report on screen.
 
 ## Notes
 
