@@ -303,6 +303,6 @@ def about_text() -> str:
             "",
             "Credits:",
             "- Developer: Sirem",
-            "- GitHub: [GitHub Account URL/Username Here]",
+            "- GitHub: https://github.com/Sirem-code",
         ]
     )
