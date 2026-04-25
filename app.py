@@ -30,62 +30,115 @@ from models import RefreshSnapshot, WarningEvent
 from shift_detection import detect_shift
 
 
+class ActivityMeter(Static):
+    """A widget that pulses to show packet activity."""
+
+    def on_mount(self) -> None:
+        self.styles.background = "#121212"
+        self.styles.color = "#00cfd5"
+
+    def pulse(self) -> None:
+        self.styles.background = "#00cfd5"
+        self.set_timer(0.1, self.reset_style)
+
+    def reset_style(self) -> None:
+        self.styles.background = "#121212"
+
+
 class ShannonEntropyApp(App[None]):
-    TITLE = "Shannon Entropy + Bernoulli Chart"
-    SUB_TITLE = "Live Network Listener"
+    TITLE = "Shannon Entropy Analyzer"
+    SUB_TITLE = "Advanced Network Diagnostics"
 
     CSS = """
+    $background: #121212;
+    $surface: #1e1e1e;
+    $primary: #00cfd5;
+    $primary-light: #64ffda;
+    $secondary: #ffab00;
+    $error: #ff5252;
+    $success: #00e676;
+    $border: #333333;
+    $text: #e0e0e0;
+    $text-muted: #9e9e9e;
+
     Screen {
+        background: $background;
+        color: $text;
         align: center middle;
     }
 
     #main {
-        width: 90%;
-        height: 90%;
-        border: round gray;
+        width: 100%;
+        height: 100%;
+        padding: 1 2;
+    }
+
+    TabbedContent {
+        height: 1fr;
+    }
+
+    TabPane {
         padding: 1 2;
     }
 
     .block-title {
+        color: $primary;
+        text-style: bold;
         margin: 1 0 0 0;
     }
 
     Input {
+        background: $surface;
+        border: tall $border;
+        color: $text;
         margin: 0 0 1 0;
+        padding: 0 1;
+    }
+
+    Input:focus {
+        border: tall $primary;
     }
 
     #status {
-        margin: 0 0 1 0;
+        margin: 1 0;
+        padding: 0 1;
+        background: $surface;
+        color: $primary;
+        text-style: bold;
+        border: left $primary;
     }
 
     #controls {
         height: auto;
-        width: auto;
-        align-horizontal: left;
+        width: 100%;
+        margin: 1 0;
+    }
+
+    Button {
+        width: 20;
+        margin-right: 1;
+        border: none;
+        text-style: bold;
     }
 
     #start_capture {
-        width: 18;
-        margin-right: 1;
+        background: $primary;
+        color: black;
+    }
+
+    #start_capture:hover {
+        background: $primary-light;
     }
 
     #stop_capture {
-        width: 18;
+        background: $secondary;
+        color: black;
     }
 
     #trend_controls {
         height: auto;
-        width: auto;
-        align-horizontal: left;
+        width: 100%;
         margin: 0 0 1 0;
-    }
-
-    #export_csv,
-    #export_matlab,
-    #clear_charts,
-    #see_warnings {
-        width: 18;
-        margin-right: 1;
     }
 
     #analyzer_output,
@@ -95,9 +148,10 @@ class ShannonEntropyApp(App[None]):
     #warnings_output,
     #about_text {
         height: auto;
-        border: round green;
+        background: $surface;
+        border: solid $border;
         padding: 1;
-        overflow: auto;
+        margin-top: 1;
     }
 
     #analyzer_scroll,
@@ -107,14 +161,31 @@ class ShannonEntropyApp(App[None]):
     #warnings_scroll,
     #about_scroll {
         height: 1fr;
-        overflow: auto;
     }
 
     #trends_metrics {
         height: auto;
-        border: round cyan;
+        background: $surface;
+        border: left $primary;
         padding: 1;
         margin: 0 0 1 0;
+        color: $primary;
+    }
+
+    ActivityMeter {
+        width: 100%;
+        height: 1;
+        margin: 1 0;
+    }
+
+    .activity-label {
+        color: $text-muted;
+        margin-bottom: 0;
+    }
+
+    #packet_counter {
+        color: $success;
+        text-style: bold;
     }
     """
 
@@ -123,6 +194,7 @@ class ShannonEntropyApp(App[None]):
         self.capture_lock = Lock()
         self.captured_symbols: list[str] = []
         self.capture_interface = ""
+        self.capture_filter = ""
         self.refresh_seconds = 10.0
         self.capture_started_at = 0.0
         self.is_listening = False
@@ -139,6 +211,7 @@ class ShannonEntropyApp(App[None]):
         self.warning_cooldown_ticks = 2
         self.last_warning_tick = -9999
         self.consecutive_warning_ticks = 0
+        self.total_packets_count = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -146,15 +219,24 @@ class ShannonEntropyApp(App[None]):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
                     with VerticalScroll(id="analyzer_scroll"):
-                        yield Label("Refresh duration (seconds)", classes="block-title")
-                        yield Input(value="10", placeholder="Example: 10", id="duration")
+                        with Horizontal():
+                            with VerticalScroll():
+                                yield Label("Refresh duration (seconds)", classes="block-title")
+                                yield Input(value="10", placeholder="Example: 10", id="duration")
+                            with VerticalScroll():
+                                yield Label("Interface (optional)", classes="block-title")
+                                yield Input(value="", placeholder=f"Default: {detect_default_interface()}", id="interface")
 
-                        yield Label("Interface (optional, blank = default active interface)", classes="block-title")
-                        yield Input(value="", placeholder=f"Default: {detect_default_interface()}", id="interface")
+                        yield Label("BPF Filter (optional, e.g. 'tcp port 443')", classes="block-title")
+                        yield Input(value="", placeholder="Example: tcp or udp", id="filter")
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
                             yield Button("Stop", variant="warning", id="stop_capture", disabled=True)
+
+                        yield Label("Packet Activity", classes="activity-label")
+                        yield ActivityMeter(id="activity_meter")
+                        yield Label("Live Counter: [b]0[/b] packets captured", id="packet_counter")
 
                         yield Label("Status: Idle", id="status")
                         yield Static(
@@ -244,16 +326,23 @@ class ShannonEntropyApp(App[None]):
         try:
             duration_input = self.query_one("#duration", Input).value
             interface_input = self.query_one("#interface", Input).value
+            filter_input = self.query_one("#filter", Input).value
+            
             duration_seconds = float(duration_input)
             if duration_seconds <= 0:
                 raise ValueError("Refresh duration must be greater than zero.")
 
             iface = interface_input.strip() or detect_default_interface()
+            bpf_filter = filter_input.strip() or None
+
             self.refresh_seconds = duration_seconds
             self.capture_interface = iface
+            self.capture_filter = bpf_filter or "all traffic"
             self.capture_started_at = monotonic()
+            
             with self.capture_lock:
                 self.captured_symbols = []
+                self.total_packets_count = 0
 
             self.refresh_history = []
             self.last_snapshot_packet_count = 0
@@ -266,7 +355,7 @@ class ShannonEntropyApp(App[None]):
             self.last_warning_tick = -9999
             self.consecutive_warning_ticks = 0
 
-            self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
+            self.sniffer = AsyncSniffer(iface=iface, filter=bpf_filter, prn=self._on_packet, store=False)
             self.sniffer.start()
             self.is_listening = True
 
@@ -275,7 +364,8 @@ class ShannonEntropyApp(App[None]):
 
             status.update("Status: Listening...")
             analyzer_output.update(
-                f"Live capture started on '{iface}'.\n"
+                f"Live capture started on [b]{iface}[/b].\n"
+                f"Filter: [b]{self.capture_filter}[/b]\n"
                 f"Refreshing analysis every {self.refresh_seconds:.2f} seconds."
             )
             self.refresh_live_report()
@@ -343,6 +433,21 @@ class ShannonEntropyApp(App[None]):
         symbol = packet_to_symbol(packet)
         with self.capture_lock:
             self.captured_symbols.append(symbol)
+            self.total_packets_count += 1
+            count = self.total_packets_count
+        
+        # Update live counter and activity meter
+        self.call_from_thread(self._update_live_ui, count)
+
+    def _update_live_ui(self, count: int) -> None:
+        try:
+            counter = self.query_one("#packet_counter", Label)
+            counter.update(f"Live Counter: [b]{count}[/b] packets captured")
+            
+            meter = self.query_one("#activity_meter", ActivityMeter)
+            meter.pulse()
+        except Exception:
+            pass
 
     def export_history_csv(self) -> None:
         status = self.query_one("#status", Label)
@@ -534,6 +639,7 @@ class ShannonEntropyApp(App[None]):
             format_entropy_summary(entropy_result)
             + "\n\n"
             + format_capture_report(interface, elapsed, self.refresh_seconds, total_packets)
+            + f"\nFilter: [b]{self.capture_filter}[/b]"
             + "\n\n"
             + format_entropy_report(entropy_result)
         )
