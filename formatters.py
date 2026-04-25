@@ -83,6 +83,12 @@ def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
     current = history[-1]
     previous_packets = history[-2].total_packets if len(history) > 1 else 0
     packet_delta = current.total_packets - previous_packets
+    avg_new_packets = sum(snapshot.new_packets for snapshot in history) / len(history)
+    packet_rate = (current.total_packets / current.elapsed_seconds) if current.elapsed_seconds > 0 else 0.0
+    hb_delta = (
+        current.binary_entropy_bits - history[-2].binary_entropy_bits if len(history) > 1 else 0.0
+    )
+    trend_label = "rising" if hb_delta > 0 else "falling" if hb_delta < 0 else "stable"
     lines = [
         "Binary Entropy Timeline",
         "-----------------------",
@@ -94,6 +100,13 @@ def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
         "",
         "Hb(p) over refresh ticks:",
         ascii_rate_plot(values),
+        "",
+        "Networking context:",
+        f"Approx packet rate: {packet_rate:.2f} packets/s",
+        f"Avg packets per refresh: {avg_new_packets:.2f}",
+        f"Last refresh packet burst: {current.new_packets}",
+        f"Dominant traffic share: {current.success_probability:.2%}",
+        f"Binary entropy trend vs last tick: {hb_delta:+.4f} bits ({trend_label})",
     ]
     return "\n".join(lines)
 
@@ -109,7 +122,6 @@ def format_shannon_entropy_timeline(history: list[RefreshSnapshot]) -> str:
     lines = [
         "Shannon Entropy Timeline",
         "-----------------------",
-        "Y-axis is dynamically scaled to fit H(X) values above 1.0.",
         f"Current H(X): {current.shannon_entropy_bits:.6f} bits",
         "",
         "H(X) over refresh ticks:",
