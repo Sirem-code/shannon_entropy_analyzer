@@ -1,68 +1,43 @@
-# Shannon Entropy TUI
+# Shannon Entropy Analyzer
 
-A simple Textual-based terminal UI app that:
-- Listens to real network traffic from the current device interface.
-- Computes Shannon entropy from captured packet-symbol observations.
-- Builds a Bernoulli process chart from the same captured stream.
-- Plots binary entropy per refresh tick in a dedicated Trends tab.
-- Keeps full per-refresh history for retrospective review.
-- Supports live start/stop capture with periodic report refresh.
-- Includes an About tab explaining the model and usage.
+A modern, terminal-based user interface (TUI) for real-time network traffic analysis, using Shannon Entropy to detect anomalies, network shifts, and potential malicious activity.
 
-## Tabs
+## Overview
+The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and calculates the Shannon Entropy ($H(X)$) of the protocol mix in real-time. By observing the diversity of packets, it can intelligently identify when your network state shifts from its normal baseline.
 
-- **Analyzer**: live H(X), capture session summary, and symbol probability report.
-- **Trends**: Shannon H(X) timeline (dynamic axis), binary entropy chart, refresh history table, and Bernoulli chart.
-- **Packet Analysis**: protocol class breakdown, packet-rate context, and protocol-mixing indicators.
-- **Investigate**: automatic shift alerts, alert timeline, trigger reasons, and before/after baseline comparison.
-- **Warnings**: queued WARNING/CRITICAL events with reasons and triage-friendly timeline.
-- **About**: concise explanation and reference link.
+## Key Features
+- **Live Packet Sniffing**: Real-time traffic capture with customizable BPF filters (e.g., `tcp`, `port 443`).
+- **Dynamic Shift Detection**: Automatically calculates rolling baselines and detects statistically significant deviations in packet rates and entropy.
+- **Advanced Heuristic Alerts**:
+  - **DoS/Flood Attack**: Detects massive spikes in packet rates combined with critically low entropy.
+  - **Port Scan/Reconnaissance**: Identifies high packet rates combined with high or spiking entropy (diversity of ports/protocols).
+  - **Data Exfiltration/Tunneling**: Catches sudden extreme spikes in entropy that often indicate encrypted or highly randomized traffic leaving the network.
+  - **Entropy Volatility (Jitter)**: Warns when network traffic diversity is highly unstable.
+  - **Sustained State Warnings**: Alerts if the network remains in a flooded or unnatural state for extended periods.
+  - **New Species Alert**: Notifies you when a completely new protocol appears that wasn't in the baseline.
+- **Configurable Alert Rules**: Tweak the sensitivity of all detection algorithms on the fly via the built-in UI.
+- **Exporting**: Save your refresh history and metrics to CSV or MATLAB `.m` formats for post-incident analysis.
 
-## What to enter
+## Installation
+Ensure you have Python 3.10+ installed.
 
-- **Refresh duration (seconds)**: how often on-screen analysis is refreshed while listening.
-  - Example: `10`
-- **Interface (optional)**: leave blank to use the default active interface.
+1. Install the required dependencies:
+```bash
+pip install scapy textual
+```
+*(Note: On Windows, Scapy requires Npcap to be installed to capture packets).*
 
-## Run
-
-```powershell
-python -m pip install -r requirements.txt
+## Usage
+Run the application directly:
+```bash
 python app.py
 ```
 
-## Important for packet capture
+### Controls
+- **Start Listening**: Begins capturing packets on the selected interface.
+- **Toggle Mode**: Switch between Interval Mode (fixed time windows) or Packet Mode (fixed packet count windows).
+- **Settings & Rules**: Navigate to the "Alert Rules" tab to configure detection thresholds.
 
-- Packet sniffing may require elevated privileges.
-- On Windows, install Npcap if capture is unavailable.
-- If no packets are captured, increase the listening duration or generate traffic during capture.
-
-## Live controls
-
-- Click **Start Listening** to begin packet capture immediately.
-- The analysis refreshes every configured duration while capture is active.
-- Click **Stop** to end capture and keep the final report on screen.
-- In **Investigate**, click **See Warnings** to jump directly to the warnings window.
-
-## Export
-
-- In the **Trends** tab, use **Export CSV** to save refresh history as a CSV file.
-- Use **Export MATLAB** to save a MATLAB-compatible `.m` file with the same history matrix.
-- Export actions create/use an `exports` folder in the project directory and show the saved file path in the Trends panel.
-- Use **Clear Charts** to reset trend plots/history and start charting from the current moment.
-- Exports now include shift detection fields (shift score, alert level, alert reasons, and baseline comparison values).
-- The app also shows a floating "Export Complete" notification with the file location.
-- Exported `.m` files include MATLAB/Octave plotting commands for Shannon entropy, Bernoulli chart, and packet-rate baseline.
-
-## Notes
-
-- Shannon entropy is computed as:
-
-$$
-H(X) = -\sum_i p(x_i)\log_2 p(x_i)
-$$
-
-- The Bernoulli chart displays:
-  - A binary projection of captured symbols using the most frequent observed symbol as success (1), and all others as failure (0)
-  - Running success rate $\hat p_n$
-  - An ASCII plot of running success rate over trials
+## Credits
+- **Developer**: Sirem
+- **GitHub**: [Sirem-code](https://github.com/Sirem-code)

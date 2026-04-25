@@ -764,6 +764,7 @@ class ShannonEntropyApp(App[None]):
 
         self.refresh_history = []
         self.last_snapshot_packet_count = current_packet_count
+        self.known_protocols = set()
         self.last_trends_text = "Charts and refresh history were cleared."
         trends_metrics.update("Key Metrics\n-----------\nCharts were cleared. Waiting for new refresh data.")
         trends_output.update(self.last_trends_text)
@@ -829,11 +830,20 @@ class ShannonEntropyApp(App[None]):
         new_packets = max(0, total_packets - self.last_snapshot_packet_count)
         self.last_snapshot_packet_count = total_packets
         packet_rate = total_packets / elapsed if elapsed > 0 else 0.0
+
+        current_protocols = set(symbols)
+        if not hasattr(self, 'known_protocols'):
+            self.known_protocols = set(symbols)
+        
+        new_protocols = current_protocols - self.known_protocols
+        self.known_protocols.update(new_protocols)
+
         shift = detect_shift(
             history=self.refresh_history,
             current_shannon_bits=entropy_result.entropy_bits,
             current_packet_rate=packet_rate,
             current_dominant_share=success_probability,
+            new_protocols=new_protocols,
             shannon_drop_tolerance=self.get_float_input("rule_shannon_drop", 0.7),
             dominant_share_tolerance=self.get_float_input("rule_dominant_share", 0.15),
             packet_rate_multiplier=self.get_float_input("rule_packet_rate", 2.0),

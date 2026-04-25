@@ -32,6 +32,7 @@ def detect_shift(
     current_shannon_bits: float,
     current_packet_rate: float,
     current_dominant_share: float,
+    new_protocols: set[str] = None,
     window_size: int = 8,
     min_baseline_points: int = 5,
     shannon_drop_tolerance: float = 0.7,
@@ -105,6 +106,27 @@ def detect_shift(
         score += 4.0
         reasons.append(
             f"[!] HEURISTIC ALERT: Possible Data Exfiltration/Tunneling! Sudden extreme entropy spike ({current_shannon_bits:.2f} bits) indicating encrypted or random traffic."
+        )
+
+    # 1. Entropy Volatility (Jitter) Warning
+    if std_shannon > 1.0:
+        score += 3.0
+        reasons.append(
+            f"[!] VOLATILITY ALERT: High Entropy Jitter! Standard deviation is very high ({std_shannon:.2f}), indicating an unstable network state."
+        )
+
+    # 2. Sustained State Warning (Sustained low entropy)
+    if all(item.shannon_entropy_bits < flood_entropy_ceiling for item in baseline) and len(baseline) >= 5:
+        score += 4.0
+        reasons.append(
+            f"[!] SUSTAINED ALERT: Entropy has remained critically low (< {flood_entropy_ceiling:.2f}) for {len(baseline)} ticks (Possible continuous Broadcast Storm or Monoculture)."
+        )
+
+    # 3. New Species / Unknown Protocol Alert
+    if new_protocols:
+        score += 3.0
+        reasons.append(
+            f"[!] ANOMALY ALERT: New protocol(s) detected: {', '.join(new_protocols)}"
         )
 
     if score >= 4.0:
