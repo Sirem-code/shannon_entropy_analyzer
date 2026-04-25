@@ -61,7 +61,7 @@ class ActivityMeter(Static):
     def render_meter(self) -> None:
         bar_len = int(self.intensity * 20)
         bar = "█" * bar_len + "░" * (20 - bar_len)
-        self.update(f"[cyan]{bar}[/]")
+        self.update(f"[#b388ff]{bar}[/]")
 
 
 class ShannonEntropyApp(App[None]):
@@ -77,16 +77,18 @@ class ShannonEntropyApp(App[None]):
     SUB_TITLE = "Advanced Network Diagnostics"
 
     CSS = """
-    $background: #121212;
-    $surface: #1e1e1e;
-    $primary: #00cfd5;
-    $primary-light: #64ffda;
+    $background: #0f0f0f;
+    $surface: #1a1a1a;
+    $surface-lighten-1: #252525;
+    $primary: #7c4dff;
+    $primary-light: #b388ff;
+    $primary-dark: #6200ea;
     $secondary: #ffab00;
     $error: #ff5252;
     $success: #00e676;
     $border: #333333;
-    $text: #e0e0e0;
-    $text-muted: #9e9e9e;
+    $text: #eceff1;
+    $text-muted: #90a4ae;
 
     Screen {
         background: $background;
@@ -102,23 +104,23 @@ class ShannonEntropyApp(App[None]):
 
     Tabs {
         background: $surface;
-        color: #7c4dff;
+        color: $primary;
         text-style: bold;
     }
 
     ContentTab {
-        color: #7c4dff;
+        color: $primary;
     }
 
     ContentTab:hover {
-        color: #b388ff;
+        color: $primary-light;
         background: $surface-lighten-1;
     }
 
     ContentTab.-active {
-        color: #d1c4e9 !important;
+        color: $text !important;
         background: transparent !important;
-        border-bottom: tall #7c4dff;
+        border-bottom: tall $primary;
     }
 
     TabbedContent {
@@ -129,18 +131,8 @@ class ShannonEntropyApp(App[None]):
         padding: 1 2;
     }
 
-    #start_capture {
-        background: #7c4dff;
-        color: $text;
-        border: tall #5e35b1;
-    }
-
-    #start_capture:hover {
-        background: #9575cd;
-    }
-
     #status {
-        color: #7c4dff;
+        color: $primary;
         text-style: bold;
         margin-top: 1;
     }
@@ -179,15 +171,18 @@ class ShannonEntropyApp(App[None]):
     }
 
     Button {
-        width: 20;
+        width: 1fr;
         margin-right: 1;
         border: none;
         text-style: bold;
+        background: $surface;
+        color: $text;
     }
 
     #start_capture {
+        width: 2fr;
         background: $primary;
-        color: black;
+        color: $text;
     }
 
     #start_capture:hover {
