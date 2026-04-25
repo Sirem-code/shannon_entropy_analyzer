@@ -208,12 +208,17 @@ class ShannonEntropyApp(App[None]):
 
     TabPane {
         padding: 0;
+        height: 1fr;
+    }
+
+    TabbedContent {
+        height: 1fr;
     }
 
     .dashboard-container {
-        layout: horizontal;
-        height: 100%;
+        height: 1fr;
     }
+
 
     .sidebar {
         width: 32;
