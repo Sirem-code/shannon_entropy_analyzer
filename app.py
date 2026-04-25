@@ -30,6 +30,18 @@ from models import RefreshSnapshot, WarningEvent
 from shift_detection import detect_shift
 
 
+class ProtocolLog(Static):
+    """A widget that shows a rolling log of captured protocols."""
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.log_items: list[str] = []
+
+    def add_protocol(self, protocol: str) -> None:
+        self.log_items.append(protocol)
+        if len(self.log_items) > 20:
+            self.log_items.pop(0)
+        self.update("\n".join(f"[dim]>[/] {p}" for p in reversed(self.log_items)))
+
 class ActivityMeter(Static):
     """A widget that pulses to show packet activity."""
 
@@ -105,7 +117,7 @@ class ShannonEntropyApp(App[None]):
         background: $surface;
         color: $primary;
         text-style: bold;
-        border: left $primary;
+        border-left: tall $primary;
     }
 
     #controls {
@@ -166,7 +178,7 @@ class ShannonEntropyApp(App[None]):
     #trends_metrics {
         height: auto;
         background: $surface;
-        border: left $primary;
+        border-left: tall $primary;
         padding: 1;
         margin: 0 0 1 0;
         color: $primary;
@@ -186,6 +198,15 @@ class ShannonEntropyApp(App[None]):
     #packet_counter {
         color: $success;
         text-style: bold;
+    }
+    #protocol_log {
+        height: 10;
+        background: $surface;
+        border: solid $border;
+        padding: 0 1;
+        margin-top: 1;
+        color: $primary-light;
+        overflow: hidden;
     }
     """
 
@@ -237,6 +258,9 @@ class ShannonEntropyApp(App[None]):
                         yield Label("Packet Activity", classes="activity-label")
                         yield ActivityMeter(id="activity_meter")
                         yield Label("Live Counter: [b]0[/b] packets captured", id="packet_counter")
+
+                        yield Label("Live Protocol Log (last 20)", classes="activity-label")
+                        yield ProtocolLog(id="protocol_log")
 
                         yield Label("Status: Idle", id="status")
                         yield Static(
@@ -436,16 +460,19 @@ class ShannonEntropyApp(App[None]):
             self.total_packets_count += 1
             count = self.total_packets_count
         
-        # Update live counter and activity meter
-        self.call_from_thread(self._update_live_ui, count)
+        # Update live counter, activity meter, and protocol log
+        self.call_from_thread(self._update_live_ui, count, symbol)
 
-    def _update_live_ui(self, count: int) -> None:
+    def _update_live_ui(self, count: int, protocol: str) -> None:
         try:
             counter = self.query_one("#packet_counter", Label)
             counter.update(f"Live Counter: [b]{count}[/b] packets captured")
             
             meter = self.query_one("#activity_meter", ActivityMeter)
             meter.pulse()
+
+            log = self.query_one("#protocol_log", ProtocolLog)
+            log.add_protocol(protocol)
         except Exception:
             pass
 
