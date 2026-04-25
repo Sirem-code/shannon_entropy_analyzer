@@ -338,6 +338,11 @@ class ShannonEntropyApp(App[None]):
         color: $text-muted;
         margin-bottom: 1;
     }
+
+    .tips-collapsible {
+        margin: 1 0;
+        background: $surface;
+    }
     """
 
     def __init__(self) -> None:
@@ -423,8 +428,19 @@ class ShannonEntropyApp(App[None]):
                             yield Button("Export MATLAB", id="export_matlab")
                             yield Button("Clear Charts", id="clear_charts")
                         yield Static("Key metrics will appear here.", id="trends_metrics")
-                        with Collapsible(title="Refresh History DataTable", collapsed=False):
+                        with Collapsible(title="Refresh History DataTable", collapsed=True):
                             yield DataTable(id="history_table")
+                        with Collapsible(title="💡 How to Read These Charts", collapsed=True, classes="tips-collapsible"):
+                            yield Static(
+                                "[b]Shannon Entropy Timeline (H(X)):[/b]\n"
+                                "Tracks overall traffic diversity. H(X) near 0 means one protocol dominates. "
+                                "High H(X) means many protocols or highly randomized/encrypted traffic.\n\n"
+                                "[b]Binary Entropy (Hb(p)) over refresh ticks:[/b]\n"
+                                "Binary entropy of the dominant protocol vs. everything else combined. "
+                                "Peaks (1.0) when the dominant protocol makes up exactly 50% of the traffic.\n\n"
+                                "[b]Running success-rate plot:[/b]\n"
+                                "The exact percentage share of the single most dominant protocol over time."
+                            )
                         yield Static(
                             "Visual charts will appear here.",
                             id="trends_output",
