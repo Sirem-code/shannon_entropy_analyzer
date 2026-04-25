@@ -282,28 +282,37 @@ class ShannonEntropyApp(App[None]):
     Button {
         width: 100%;
         height: 3;
-        border: solid $border;
-        background: $surface-lighten-1;
+        border: round $primary;
+        background: rgba(88, 166, 255, 0.1);
         color: $text;
         margin-bottom: 1;
         text-style: bold;
     }
 
     Button:hover {
-        background: $primary-dark;
-        border: solid $primary;
+        background: rgba(88, 166, 255, 0.2);
+        border: round $primary-light;
+        color: $primary-light;
+    }
+
+    .btn-small {
+        width: 20;
+        height: 3;
+        margin-bottom: 1;
     }
 
     #start_capture.btn-start {
-        background: $success;
-        color: #000;
-        border: none;
+        background: rgba(63, 185, 80, 0.1);
+        color: $success;
+        border: round $success;
     }
     #start_capture.btn-stop {
-        background: $error;
-        color: #fff;
-        border: none;
+        background: rgba(248, 81, 73, 0.1);
+        color: $error;
+        border: round $error;
     }
+
+
 
     #status {
         color: $secondary;
@@ -451,13 +460,16 @@ class ShannonEntropyApp(App[None]):
                             yield ActivityMeter(id="activity_meter")
                             yield Label("Packets: [b]0[/b]", id="packet_counter")
 
-                        with Vertical(classes="main-panel"):
+                        with Vertical(classes="main-panel scroll-box"):
                             yield Label("Live Protocol Stream", classes="section-title")
                             yield ProtocolLog(id="protocol_log")
                             yield Static(
                                 "Waiting for capture...",
                                 id="analyzer_output",
                             )
+                            yield Label("Dominant Process (Success Share)", classes="section-title")
+                            yield Static("Start capture to view Bernoulli sequence.", id="bernoulli_output")
+
 
                 with TabPane("Trends", id="trends"):
                     with Horizontal(classes="dashboard-container"):
@@ -501,7 +513,7 @@ class ShannonEntropyApp(App[None]):
 
                 with TabPane("Warnings", id="warnings"):
                     with VerticalScroll(classes="main-panel"):
-                        yield Button("← Back to Investigation", id="back_to_investigate")
+                        yield Button("← Back", id="back_to_investigate", classes="btn-small")
                         yield Label("Event Queue", classes="section-title")
                         yield Static("No warnings.", id="warnings_output")
 
@@ -890,7 +902,9 @@ class ShannonEntropyApp(App[None]):
             self.last_investigate_text = investigate_text
             self.last_warnings_text = warnings_text
             analyzer_output.update(analyzer_text)
+            self.query_one("#bernoulli_output", Static).update("Awaiting packets...")
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
+
             trends_output.update(trends_text)
             packet_output.update(packet_text)
             investigate_output.update(investigate_text)
@@ -1000,6 +1014,8 @@ class ShannonEntropyApp(App[None]):
             + "\n\n"
             + bernoulli_report
         )
+        self.query_one("#bernoulli_output", Static).update(bernoulli_report)
+
 
         # Update DataTable
         table = self.query_one("#history_table", DataTable)
