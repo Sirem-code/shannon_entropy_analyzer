@@ -6,7 +6,7 @@ from time import monotonic
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, VerticalScroll
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
@@ -95,9 +95,17 @@ class ShannonEntropyApp(App[None]):
     #trends_output,
     #packet_output,
     #about_text {
-        height: 1fr;
+        height: auto;
         border: round green;
         padding: 1;
+        overflow: auto;
+    }
+
+    #analyzer_scroll,
+    #trends_scroll,
+    #packet_scroll,
+    #about_scroll {
+        height: 1fr;
         overflow: auto;
     }
 
@@ -130,42 +138,46 @@ class ShannonEntropyApp(App[None]):
         with Container(id="main"):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
-                    yield Label("Refresh duration (seconds)", classes="block-title")
-                    yield Input(value="10", placeholder="Example: 10", id="duration")
+                    with VerticalScroll(id="analyzer_scroll"):
+                        yield Label("Refresh duration (seconds)", classes="block-title")
+                        yield Input(value="10", placeholder="Example: 10", id="duration")
 
-                    yield Label("Interface (optional, blank = default active interface)", classes="block-title")
-                    yield Input(value="", placeholder=f"Default: {detect_default_interface()}", id="interface")
+                        yield Label("Interface (optional, blank = default active interface)", classes="block-title")
+                        yield Input(value="", placeholder=f"Default: {detect_default_interface()}", id="interface")
 
-                    with Horizontal(id="controls"):
-                        yield Button("Start Listening", variant="primary", id="start_capture")
-                        yield Button("Stop", variant="warning", id="stop_capture", disabled=True)
+                        with Horizontal(id="controls"):
+                            yield Button("Start Listening", variant="primary", id="start_capture")
+                            yield Button("Stop", variant="warning", id="stop_capture", disabled=True)
 
-                    yield Label("Status: Idle", id="status")
-                    yield Static(
-                        "Press Start Listening to begin live capture and periodic analysis.",
-                        id="analyzer_output",
-                    )
+                        yield Label("Status: Idle", id="status")
+                        yield Static(
+                            "Press Start Listening to begin live capture and periodic analysis.",
+                            id="analyzer_output",
+                        )
 
                 with TabPane("Trends", id="trends"):
-                    with Horizontal(id="trend_controls"):
-                        yield Button("Export CSV", id="export_csv")
-                        yield Button("Export MATLAB", id="export_matlab")
-                        yield Button("Clear Charts", id="clear_charts")
-                    yield Static("Export notice: none yet.", id="export_notice")
-                    yield Static("Key metrics will appear here.", id="trends_metrics")
-                    yield Static(
-                        "Binary entropy chart and refresh history will appear here after capture starts.",
-                        id="trends_output",
-                    )
+                    with VerticalScroll(id="trends_scroll"):
+                        with Horizontal(id="trend_controls"):
+                            yield Button("Export CSV", id="export_csv")
+                            yield Button("Export MATLAB", id="export_matlab")
+                            yield Button("Clear Charts", id="clear_charts")
+                        yield Static("Export notice: none yet.", id="export_notice")
+                        yield Static("Key metrics will appear here.", id="trends_metrics")
+                        yield Static(
+                            "Binary entropy chart and refresh history will appear here after capture starts.",
+                            id="trends_output",
+                        )
 
                 with TabPane("Packet Analysis", id="packet_analysis"):
-                    yield Static(
-                        "Protocol distribution and mixing metrics will appear here after capture starts.",
-                        id="packet_output",
-                    )
+                    with VerticalScroll(id="packet_scroll"):
+                        yield Static(
+                            "Protocol distribution and mixing metrics will appear here after capture starts.",
+                            id="packet_output",
+                        )
 
                 with TabPane("About", id="about"):
-                    yield Static(about_text(), id="about_text")
+                    with VerticalScroll(id="about_scroll"):
+                        yield Static(about_text(), id="about_text")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
