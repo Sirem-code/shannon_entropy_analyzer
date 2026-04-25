@@ -120,6 +120,35 @@ def export_refresh_history_matlab_m(history: list[RefreshSnapshot], output_dir: 
         lines.append(f"  '{reason_text}'")
 
     lines.append("};")
+    lines.extend(
+        [
+            "",
+            "% Plot section (MATLAB/Octave compatible)",
+            "figure('Name', 'Network Entropy Investigation', 'NumberTitle', 'off');",
+            "subplot(3,1,1);",
+            "plot(tick, shannon_entropy_bits, '-o', 'LineWidth', 1.4);",
+            "grid on;",
+            "ylabel('H(X) bits');",
+            "title('Shannon Entropy Over Refresh Ticks');",
+            "",
+            "subplot(3,1,2);",
+            "plot(tick, binary_entropy_bits, '-o', 'LineWidth', 1.4); hold on;",
+            "stairs(tick, success_probability, '--', 'LineWidth', 1.2);",
+            "grid on;",
+            "ylabel('Hb(p) / p(success)');",
+            "title('Bernoulli Chart: Binary Entropy and Success Probability');",
+            "legend('Hb(p)', 'p(success)', 'Location', 'best');",
+            "",
+            "subplot(3,1,3);",
+            "plot(tick, packet_rate, '-o', 'LineWidth', 1.4); hold on;",
+            "plot(tick, baseline_packet_rate * ones(size(tick)), '--', 'LineWidth', 1.2);",
+            "grid on;",
+            "xlabel('Refresh tick');",
+            "ylabel('Packets/s');",
+            "title('Packet Rate vs Baseline');",
+            "legend('Packet rate', 'Baseline median', 'Location', 'best');",
+        ]
+    )
 
     path.write_text("\n".join(lines), encoding="utf-8")
     return path

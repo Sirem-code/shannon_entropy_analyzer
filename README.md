@@ -49,6 +49,8 @@ python app.py
 - Export actions create/use an `exports` folder in the project directory and show the saved file path in the Trends panel.
 - Use **Clear Charts** to reset trend plots/history and start charting from the current moment.
 - Exports now include shift detection fields (shift score, alert level, alert reasons, and baseline comparison values).
+- The app also shows a floating "Export Complete" notification with the file location.
+- Exported `.m` files include MATLAB/Octave plotting commands for Shannon entropy, Bernoulli chart, and packet-rate baseline.
 
 ## Notes
 

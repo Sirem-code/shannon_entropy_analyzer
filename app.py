@@ -86,13 +86,6 @@ class ShannonEntropyApp(App[None]):
         margin-right: 1;
     }
 
-    #export_notice {
-        height: auto;
-        border: round yellow;
-        padding: 1;
-        margin: 0 0 1 0;
-    }
-
     #analyzer_output,
     #trends_output,
     #packet_output,
@@ -166,7 +159,6 @@ class ShannonEntropyApp(App[None]):
                             yield Button("Export CSV", id="export_csv")
                             yield Button("Export MATLAB", id="export_matlab")
                             yield Button("Clear Charts", id="clear_charts")
-                        yield Static("Export notice: none yet.", id="export_notice")
                         yield Static("Key metrics will appear here.", id="trends_metrics")
                         yield Static(
                             "Binary entropy chart and refresh history will appear here after capture starts.",
@@ -340,10 +332,11 @@ class ShannonEntropyApp(App[None]):
                 + f"\nFile: {output_path}"
                 + f"\nFolder: {output_path.parent}"
             )
-            self.show_export_notice(output_path)
+            self.notify_export(output_path)
             status.update("Status: Exported CSV")
         except OSError as exc:
             trends_output.update(self.last_trends_text + f"\n\nExport failed: {exc}")
+            self.notify_error(f"Export failed: {exc}")
             status.update("Status: Export error")
 
     def export_history_matlab(self) -> None:
@@ -362,19 +355,25 @@ class ShannonEntropyApp(App[None]):
                 + f"\nFile: {output_path}"
                 + f"\nFolder: {output_path.parent}"
             )
-            self.show_export_notice(output_path)
+            self.notify_export(output_path)
             status.update("Status: Exported MATLAB")
         except OSError as exc:
             trends_output.update(self.last_trends_text + f"\n\nExport failed: {exc}")
+            self.notify_error(f"Export failed: {exc}")
             status.update("Status: Export error")
 
-    def show_export_notice(self, output_path: Path) -> None:
-        notice = self.query_one("#export_notice", Static)
-        notice.update(
-            "File exported successfully.\n"
-            f"Location: {output_path}\n"
-            f"Folder: {output_path.parent}"
-        )
+    def notify_export(self, output_path: Path) -> None:
+        message = f"File exported: {output_path}"
+        try:
+            self.notify(message, title="Export Complete", timeout=6)
+        except Exception:
+            pass
+
+    def notify_error(self, message: str) -> None:
+        try:
+            self.notify(message, title="Export Error", severity="error", timeout=8)
+        except Exception:
+            pass
 
     def clear_charts(self) -> None:
         trends_metrics = self.query_one("#trends_metrics", Static)
