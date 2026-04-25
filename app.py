@@ -6,8 +6,8 @@ from time import monotonic
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane
+from textual.containers import Container, Horizontal, VerticalScroll, Collapsible
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
@@ -43,18 +43,25 @@ class ProtocolLog(Static):
         self.update("\n".join(f"[dim]>[/] {p}" for p in reversed(self.log_items)))
 
 class ActivityMeter(Static):
-    """A widget that pulses to show packet activity."""
+    """A widget that shows packet signal intensity."""
 
     def on_mount(self) -> None:
-        self.styles.background = "#121212"
-        self.styles.color = "#00cfd5"
+        self.intensity = 0.0
+        self.set_interval(0.1, self.decay)
 
     def pulse(self) -> None:
-        self.styles.background = "#00cfd5"
-        self.set_timer(0.1, self.reset_style)
+        self.intensity = 1.0
+        self.render_meter()
 
-    def reset_style(self) -> None:
-        self.styles.background = "#121212"
+    def decay(self) -> None:
+        if self.intensity > 0:
+            self.intensity = max(0.0, self.intensity - 0.2)
+            self.render_meter()
+
+    def render_meter(self) -> None:
+        bar_len = int(self.intensity * 20)
+        bar = "█" * bar_len + "░" * (20 - bar_len)
+        self.update(f"[cyan]{bar}[/]")
 
 
 class ShannonEntropyApp(App[None]):
@@ -240,8 +247,13 @@ class ShannonEntropyApp(App[None]):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
                     with VerticalScroll(id="analyzer_scroll"):
-                        yield Label("BPF Filter (e.g. 'tcp')", classes="block-title")
-                        yield Input(value="", placeholder="Example: tcp or udp", id="filter")
+                        with Horizontal():
+                            with VerticalScroll():
+                                yield Label("BPF Filter (e.g. 'tcp')", classes="block-title")
+                                yield Input(value="", placeholder="Example: tcp or udp", id="filter")
+                            with VerticalScroll():
+                                yield Label("Refresh Duration (s)", classes="block-title")
+                                yield Input(value="2", placeholder="Default: 2", id="duration")
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
@@ -267,8 +279,10 @@ class ShannonEntropyApp(App[None]):
                             yield Button("Export MATLAB", id="export_matlab")
                             yield Button("Clear Charts", id="clear_charts")
                         yield Static("Key metrics will appear here.", id="trends_metrics")
+                        with Collapsible(title="Refresh History DataTable", collapsed=False):
+                            yield DataTable(id="history_table")
                         yield Static(
-                            "Binary entropy chart and refresh history will appear here after capture starts.",
+                            "Visual charts will appear here.",
                             id="trends_output",
                         )
 
@@ -341,9 +355,13 @@ class ShannonEntropyApp(App[None]):
 
         try:
             filter_input = self.query_one("#filter", Input).value
+            duration_input = self.query_one("#duration", Input).value
             
-            # High-frequency refresh for "truly live" feel
-            duration_seconds = 0.5
+            try:
+                duration_seconds = float(duration_input)
+                if duration_seconds <= 0: duration_seconds = 2.0
+            except ValueError:
+                duration_seconds = 2.0
 
             iface = None # Hardcoded to Auto for stability
             bpf_filter = filter_input.strip() or None
@@ -352,6 +370,11 @@ class ShannonEntropyApp(App[None]):
             self.capture_interface = "Default (Auto)"
             self.capture_filter = bpf_filter or "all traffic"
             self.capture_started_at = monotonic()
+
+            # Initialize DataTable
+            table = self.query_one("#history_table", DataTable)
+            table.clear(columns=True)
+            table.add_columns("Tick", "Time", "Total", "+New", "Dominant", "p(s)", "H(X)")
             
             with self.capture_lock:
                 self.captured_symbols = []
@@ -664,10 +687,19 @@ class ShannonEntropyApp(App[None]):
             format_shannon_entropy_timeline(self.refresh_history)
             + "\n\n"
             + format_binary_entropy_timeline(self.refresh_history)
-            + "\n\n"
-            + format_refresh_history(self.refresh_history)
-            + "\n\n"
-            + bernoulli_report
+        )
+
+        # Update DataTable
+        table = self.query_one("#history_table", DataTable)
+        last = self.refresh_history[-1]
+        table.add_row(
+            str(last.tick),
+            f"{last.elapsed_seconds:.1f}s",
+            str(last.total_packets),
+            str(last.new_packets),
+            last.dominant_symbol,
+            f"{last.success_probability:.4f}",
+            f"{last.shannon_entropy_bits:.2f}"
         )
 
         packet_text = format_packet_analysis(symbols, elapsed)
