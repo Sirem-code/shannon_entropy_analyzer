@@ -290,22 +290,46 @@ class ShannonEntropyApp(App[None]):
             self.captured_symbols.append(symbol)
 
     def export_history_csv(self) -> None:
+        status = self.query_one("#status", Label)
         trends_output = self.query_one("#trends_output", Static)
         if not self.refresh_history:
             trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
             return
 
-        output_path = export_refresh_history_csv(self.refresh_history, output_dir=str(Path.cwd()))
-        trends_output.update(self.last_trends_text + f"\n\nExported CSV: {output_path}")
+        export_dir = Path.cwd() / "exports"
+        try:
+            output_path = export_refresh_history_csv(self.refresh_history, output_dir=str(export_dir)).resolve()
+            trends_output.update(
+                self.last_trends_text
+                + "\n\nExport complete."
+                + f"\nFile: {output_path}"
+                + f"\nFolder: {output_path.parent}"
+            )
+            status.update("Status: Exported CSV")
+        except OSError as exc:
+            trends_output.update(self.last_trends_text + f"\n\nExport failed: {exc}")
+            status.update("Status: Export error")
 
     def export_history_matlab(self) -> None:
+        status = self.query_one("#status", Label)
         trends_output = self.query_one("#trends_output", Static)
         if not self.refresh_history:
             trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
             return
 
-        output_path = export_refresh_history_matlab_m(self.refresh_history, output_dir=str(Path.cwd()))
-        trends_output.update(self.last_trends_text + f"\n\nExported MATLAB .m: {output_path}")
+        export_dir = Path.cwd() / "exports"
+        try:
+            output_path = export_refresh_history_matlab_m(self.refresh_history, output_dir=str(export_dir)).resolve()
+            trends_output.update(
+                self.last_trends_text
+                + "\n\nExport complete."
+                + f"\nFile: {output_path}"
+                + f"\nFolder: {output_path.parent}"
+            )
+            status.update("Status: Exported MATLAB")
+        except OSError as exc:
+            trends_output.update(self.last_trends_text + f"\n\nExport failed: {exc}")
+            status.update("Status: Export error")
 
     def clear_charts(self) -> None:
         trends_metrics = self.query_one("#trends_metrics", Static)

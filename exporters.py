@@ -12,7 +12,9 @@ def _timestamp() -> str:
 
 
 def export_refresh_history_csv(history: list[RefreshSnapshot], output_dir: str = ".") -> Path:
-    path = Path(output_dir) / f"refresh_history_{_timestamp()}.csv"
+    output_dir_path = Path(output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+    path = output_dir_path / f"refresh_history_{_timestamp()}.csv"
     with path.open("w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(
@@ -44,7 +46,9 @@ def export_refresh_history_csv(history: list[RefreshSnapshot], output_dir: str =
 
 
 def export_refresh_history_matlab_m(history: list[RefreshSnapshot], output_dir: str = ".") -> Path:
-    path = Path(output_dir) / f"refresh_history_{_timestamp()}.m"
+    output_dir_path = Path(output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+    path = output_dir_path / f"refresh_history_{_timestamp()}.m"
     lines = [
         "% Auto-generated refresh history for MATLAB",
         "% Columns: tick, elapsed_seconds, total_packets, new_packets, success_probability, binary_entropy_bits, shannon_entropy_bits",
