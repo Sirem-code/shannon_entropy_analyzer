@@ -111,6 +111,30 @@ def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
     return "\n".join(lines)
 
 
+def format_trends_metrics(history: list[RefreshSnapshot]) -> str:
+    if not history:
+        return "Key Metrics\n-----------\nNo metrics yet. Start capture to populate trends."
+
+    current = history[-1]
+    previous_packets = history[-2].total_packets if len(history) > 1 else 0
+    packet_delta = current.total_packets - previous_packets
+    avg_new_packets = sum(snapshot.new_packets for snapshot in history) / len(history)
+    packet_rate = (current.total_packets / current.elapsed_seconds) if current.elapsed_seconds > 0 else 0.0
+    hb_delta = current.binary_entropy_bits - history[-2].binary_entropy_bits if len(history) > 1 else 0.0
+    trend_label = "rising" if hb_delta > 0 else "falling" if hb_delta < 0 else "stable"
+
+    return "\n".join(
+        [
+            "Key Metrics",
+            "-----------",
+            f"Time: {current.elapsed_seconds:.2f}s | Total packets: {current.total_packets} | New packets: {packet_delta}",
+            f"Packet rate: {packet_rate:.2f}/s | Avg new/refresh: {avg_new_packets:.2f}",
+            f"H(X): {current.shannon_entropy_bits:.4f} bits | Hb(p): {current.binary_entropy_bits:.4f} bits",
+            f"Dominant share p(success): {current.success_probability:.2%} | Hb trend: {hb_delta:+.4f} ({trend_label})",
+        ]
+    )
+
+
 def format_shannon_entropy_timeline(history: list[RefreshSnapshot]) -> str:
     if not history:
         return "Shannon Entropy Timeline\n-----------------------\nNo refresh snapshots yet."

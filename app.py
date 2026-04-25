@@ -21,6 +21,7 @@ from formatters import (
     format_entropy_summary,
     format_refresh_history,
     format_shannon_entropy_timeline,
+    format_trends_metrics,
 )
 from models import RefreshSnapshot
 
@@ -90,6 +91,13 @@ class ShannonEntropyApp(App[None]):
         padding: 1;
         overflow: auto;
     }
+
+    #trends_metrics {
+        height: auto;
+        border: round cyan;
+        padding: 1;
+        margin: 0 0 1 0;
+    }
     """
 
     def __init__(self) -> None:
@@ -133,6 +141,7 @@ class ShannonEntropyApp(App[None]):
                         yield Button("Export CSV", id="export_csv")
                         yield Button("Export MATLAB", id="export_matlab")
                         yield Button("Clear Charts", id="clear_charts")
+                    yield Static("Key metrics will appear here.", id="trends_metrics")
                     yield Static(
                         "Binary entropy chart and refresh history will appear here after capture starts.",
                         id="trends_output",
@@ -287,6 +296,7 @@ class ShannonEntropyApp(App[None]):
         trends_output.update(self.last_trends_text + f"\n\nExported MATLAB .m: {output_path}")
 
     def clear_charts(self) -> None:
+        trends_metrics = self.query_one("#trends_metrics", Static)
         trends_output = self.query_one("#trends_output", Static)
         status = self.query_one("#status", Label)
         with self.capture_lock:
@@ -295,6 +305,7 @@ class ShannonEntropyApp(App[None]):
         self.refresh_history = []
         self.last_snapshot_packet_count = current_packet_count
         self.last_trends_text = "Charts and refresh history were cleared."
+        trends_metrics.update("Key Metrics\n-----------\nCharts were cleared. Waiting for new refresh data.")
         trends_output.update(self.last_trends_text)
 
         if self.is_listening:
@@ -303,6 +314,7 @@ class ShannonEntropyApp(App[None]):
             status.update("Status: Idle (charts cleared)")
 
     def refresh_live_report(self) -> None:
+        trends_metrics = self.query_one("#trends_metrics", Static)
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
         status = self.query_one("#status", Label)
@@ -322,6 +334,7 @@ class ShannonEntropyApp(App[None]):
             self.last_analyzer_text = analyzer_text
             self.last_trends_text = trends_text
             analyzer_output.update(analyzer_text)
+            trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
             trends_output.update(trends_text)
             if self.is_listening:
                 status.update("Status: Listening...")
@@ -372,6 +385,7 @@ class ShannonEntropyApp(App[None]):
         self.last_analyzer_text = analyzer_text
         self.last_trends_text = trends_text
         analyzer_output.update(analyzer_text)
+        trends_metrics.update(format_trends_metrics(self.refresh_history))
         trends_output.update(trends_text)
 
         if self.is_listening:
