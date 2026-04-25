@@ -10,8 +10,6 @@ A simple Textual-based terminal UI app that:
 - **Listening duration (seconds)**: how long the sniffer runs.
   - Example: `10`
 - **Interface (optional)**: leave blank to use the default active interface.
-- **Target event symbol**: symbol treated as Bernoulli success (1).
-  - Example: `TCP` or `DNS/UDP`
 
 ## Run
 
@@ -35,6 +33,6 @@ H(X) = -\sum_i p(x_i)\log_2 p(x_i)
 $$
 
 - The Bernoulli chart displays:
-  - A binary projection of captured symbols (1 for target symbol, else 0)
+  - A binary projection of captured symbols using the most frequent observed symbol as success (1), and all others as failure (0)
   - Running success rate $\hat p_n$
   - An ASCII plot of running success rate over trials

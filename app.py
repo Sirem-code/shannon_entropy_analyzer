@@ -1,18 +1,28 @@
 from __future__ import annotations
 
+import importlib
 from collections import Counter
 from dataclasses import dataclass
 from math import log2
-from typing import Iterable
+from typing import Any, Iterable
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Button, Footer, Header, Input, Label, Static
 
 try:
-    from scapy.all import ARP, ICMP, IP, IPv6, TCP, UDP, conf, sniff
+    scapy_all = importlib.import_module("scapy.all")
 except Exception:  # pragma: no cover - import failure is handled at runtime
-    ARP = ICMP = IP = IPv6 = TCP = UDP = conf = sniff = None
+    scapy_all = None
+
+ARP = getattr(scapy_all, "ARP", None)
+ICMP = getattr(scapy_all, "ICMP", None)
+IP = getattr(scapy_all, "IP", None)
+IPv6 = getattr(scapy_all, "IPv6", None)
+TCP = getattr(scapy_all, "TCP", None)
+UDP = getattr(scapy_all, "UDP", None)
+conf = getattr(scapy_all, "conf", None)
+sniff = getattr(scapy_all, "sniff", None)
 
 
 @dataclass
@@ -41,13 +51,20 @@ def to_bernoulli_from_symbol_stream(symbols: list[str], success_symbol: str) -> 
     return [1 if symbol == target else 0 for symbol in symbols]
 
 
+def dominant_symbol(symbols: list[str]) -> str:
+    if not symbols:
+        raise ValueError("No network symbols were provided.")
+    counts = Counter(symbols)
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[0][0]
+
+
 def detect_default_interface() -> str:
     if conf is None:
         return "unknown"
     return str(conf.iface)
 
 
-def packet_to_symbol(packet: object) -> str:
+def packet_to_symbol(packet: Any) -> str:
     if ARP is not None and packet.haslayer(ARP):
         return "ARP"
 
@@ -195,6 +212,17 @@ def format_entropy_report(result: EntropyResult) -> str:
     return "\n".join(lines)
 
 
+def format_entropy_summary(result: EntropyResult) -> str:
+    return "\n".join(
+        [
+            "Entropy Result",
+            "--------------",
+            f"H(X): {result.entropy_bits:.6f} bits",
+            f"Normalized H(X): {result.normalized_entropy:.2%}",
+        ]
+    )
+
+
 def format_bernoulli_report(sequence: list[int], success_symbol: str) -> str:
     if not sequence:
         return "Bernoulli Process\n-----------------\nNo Bernoulli sequence provided."
@@ -285,13 +313,6 @@ class ShannonEntropyApp(App[None]):
                 id="interface",
             )
 
-            yield Label("Target event symbol for Bernoulli projection", classes="block-title")
-            yield Input(
-                value="TCP",
-                placeholder="Example: TCP",
-                id="target_symbol",
-            )
-
             yield Button("Listen And Analyze", variant="primary", id="compute")
             yield Static("Set duration and press Listen And Analyze.", id="output")
         yield Footer()
@@ -302,7 +323,6 @@ class ShannonEntropyApp(App[None]):
 
         duration_input = self.query_one("#duration", Input).value
         interface_input = self.query_one("#interface", Input).value
-        target_symbol = self.query_one("#target_symbol", Input).value
         output = self.query_one("#output", Static)
 
         try:
@@ -320,12 +340,15 @@ class ShannonEntropyApp(App[None]):
                 )
 
             entropy_result = compute_shannon_entropy(capture.symbols)
+            projection_symbol = dominant_symbol(capture.symbols)
 
-            bernoulli_sequence = to_bernoulli_from_symbol_stream(capture.symbols, target_symbol)
-            bernoulli_report = format_bernoulli_report(bernoulli_sequence, target_symbol.strip())
+            bernoulli_sequence = to_bernoulli_from_symbol_stream(capture.symbols, projection_symbol)
+            bernoulli_report = format_bernoulli_report(bernoulli_sequence, projection_symbol)
 
             output.update(
-                format_capture_report(capture)
+                format_entropy_summary(entropy_result)
+                + "\n\n"
+                + format_capture_report(capture)
                 + "\n\n"
                 + format_entropy_report(entropy_result)
                 + "\n\n"
