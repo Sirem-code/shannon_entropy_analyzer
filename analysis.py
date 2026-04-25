@@ -85,7 +85,13 @@ def downsample(values: list[float], width: int) -> list[float]:
     return sampled
 
 
-def ascii_rate_plot(values: list[float], width: int = 60, height: int = 10) -> str:
+def ascii_series_plot(
+    values: list[float],
+    width: int = 60,
+    height: int = 10,
+    y_min: float | None = None,
+    y_max: float | None = None,
+) -> str:
     if not values:
         return "(no data to plot)"
 
@@ -93,16 +99,28 @@ def ascii_rate_plot(values: list[float], width: int = 60, height: int = 10) -> s
     plot_width = len(sampled)
     grid = [[" " for _ in range(plot_width)] for _ in range(height)]
 
+    local_min = min(sampled) if y_min is None else y_min
+    local_max = max(sampled) if y_max is None else y_max
+    if local_max <= local_min:
+        local_max = local_min + 1.0
+    value_range = local_max - local_min
+
     for x, value in enumerate(sampled):
-        y = int(round((1 - value) * (height - 1)))
+        normalized = (value - local_min) / value_range
+        normalized = max(0.0, min(1.0, normalized))
+        y = int(round((1 - normalized) * (height - 1)))
         y = max(0, min(height - 1, y))
         grid[y][x] = "*"
 
     lines: list[str] = []
     for row in range(height):
-        label_value = 1 - (row / (height - 1)) if height > 1 else 1.0
+        label_value = local_max - ((row / (height - 1)) * value_range) if height > 1 else local_max
         lines.append(f"{label_value:>4.2f} | {''.join(grid[row])}")
 
     lines.append("     + " + "-" * plot_width)
     lines.append("       tick index ->")
     return "\n".join(lines)
+
+
+def ascii_rate_plot(values: list[float], width: int = 60, height: int = 10) -> str:
+    return ascii_series_plot(values, width=width, height=height, y_min=0.0, y_max=1.0)

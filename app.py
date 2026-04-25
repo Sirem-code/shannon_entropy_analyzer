@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from threading import Lock
 from time import monotonic
 from typing import Any
@@ -10,6 +11,7 @@ from textual.widgets import Button, Footer, Header, Input, Label, Static, Tabbed
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
+from exporters import export_refresh_history_csv, export_refresh_history_matlab_m
 from formatters import (
     about_text,
     format_bernoulli_report,
@@ -18,6 +20,7 @@ from formatters import (
     format_entropy_report,
     format_entropy_summary,
     format_refresh_history,
+    format_shannon_entropy_timeline,
 )
 from models import RefreshSnapshot
 
@@ -63,6 +66,19 @@ class ShannonEntropyApp(App[None]):
 
     #stop_capture {
         width: 18;
+    }
+
+    #trend_controls {
+        height: auto;
+        width: auto;
+        align-horizontal: left;
+        margin: 0 0 1 0;
+    }
+
+    #export_csv,
+    #export_matlab {
+        width: 18;
+        margin-right: 1;
     }
 
     #analyzer_output,
@@ -112,6 +128,9 @@ class ShannonEntropyApp(App[None]):
                     )
 
                 with TabPane("Trends", id="trends"):
+                    with Horizontal(id="trend_controls"):
+                        yield Button("Export CSV", id="export_csv")
+                        yield Button("Export MATLAB", id="export_matlab")
                     yield Static(
                         "Binary entropy chart and refresh history will appear here after capture starts.",
                         id="trends_output",
@@ -127,6 +146,12 @@ class ShannonEntropyApp(App[None]):
             return
         if event.button.id == "stop_capture":
             self.stop_capture(user_requested=True)
+            return
+        if event.button.id == "export_csv":
+            self.export_history_csv()
+            return
+        if event.button.id == "export_matlab":
+            self.export_history_matlab()
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
@@ -238,6 +263,24 @@ class ShannonEntropyApp(App[None]):
         with self.capture_lock:
             self.captured_symbols.append(symbol)
 
+    def export_history_csv(self) -> None:
+        trends_output = self.query_one("#trends_output", Static)
+        if not self.refresh_history:
+            trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
+            return
+
+        output_path = export_refresh_history_csv(self.refresh_history, output_dir=str(Path.cwd()))
+        trends_output.update(self.last_trends_text + f"\n\nExported CSV: {output_path}")
+
+    def export_history_matlab(self) -> None:
+        trends_output = self.query_one("#trends_output", Static)
+        if not self.refresh_history:
+            trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
+            return
+
+        output_path = export_refresh_history_matlab_m(self.refresh_history, output_dir=str(Path.cwd()))
+        trends_output.update(self.last_trends_text + f"\n\nExported MATLAB .m: {output_path}")
+
     def refresh_live_report(self) -> None:
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
@@ -296,6 +339,8 @@ class ShannonEntropyApp(App[None]):
         )
 
         trends_text = (
+            format_shannon_entropy_timeline(self.refresh_history)
+            + "\n\n"
             format_binary_entropy_timeline(self.refresh_history)
             + "\n\n"
             + format_refresh_history(self.refresh_history)

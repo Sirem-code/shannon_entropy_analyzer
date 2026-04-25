@@ -12,7 +12,7 @@ A simple Textual-based terminal UI app that:
 ## Tabs
 
 - **Analyzer**: live H(X), capture session summary, and symbol probability report.
-- **Trends**: binary entropy chart, refresh history table, and Bernoulli chart.
+- **Trends**: Shannon H(X) timeline (dynamic axis), binary entropy chart, refresh history table, and Bernoulli chart.
 - **About**: concise explanation and reference link.
 
 ## What to enter
@@ -39,6 +39,11 @@ python app.py
 - Click **Start Listening** to begin packet capture immediately.
 - The analysis refreshes every configured duration while capture is active.
 - Click **Stop** to end capture and keep the final report on screen.
+
+## Export
+
+- In the **Trends** tab, use **Export CSV** to save refresh history as a CSV file.
+- Use **Export MATLAB** to save a MATLAB-compatible `.m` file with the same history matrix.
 
 ## Notes
 

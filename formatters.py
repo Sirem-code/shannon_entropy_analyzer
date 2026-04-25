@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from analysis import ascii_rate_plot, running_success_rate
+from analysis import ascii_rate_plot, ascii_series_plot, running_success_rate
 from models import EntropyResult, RefreshSnapshot
 
 
@@ -91,6 +91,26 @@ def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
         "",
         "Hb(p) over refresh ticks:",
         ascii_rate_plot(values),
+    ]
+    return "\n".join(lines)
+
+
+def format_shannon_entropy_timeline(history: list[RefreshSnapshot]) -> str:
+    if not history:
+        return "Shannon Entropy Timeline\n-----------------------\nNo refresh snapshots yet."
+
+    values = [snapshot.shannon_entropy_bits for snapshot in history]
+    current = history[-1]
+    max_value = max(values)
+    y_max = max(2.0, max_value * 1.15)
+    lines = [
+        "Shannon Entropy Timeline",
+        "-----------------------",
+        "Y-axis is dynamically scaled to fit H(X) values above 1.0.",
+        f"Current H(X): {current.shannon_entropy_bits:.6f} bits",
+        "",
+        "H(X) over refresh ticks:",
+        ascii_series_plot(values, y_min=0.0, y_max=y_max),
     ]
     return "\n".join(lines)
 
