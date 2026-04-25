@@ -38,6 +38,18 @@ class EntropyResult:
     probabilities: list[tuple[str, float]]
 
 
+@dataclass
+class RefreshSnapshot:
+    tick: int
+    elapsed_seconds: float
+    total_packets: int
+    new_packets: int
+    dominant_symbol: str
+    success_probability: float
+    binary_entropy_bits: float
+    shannon_entropy_bits: float
+
+
 def to_bernoulli_from_symbol_stream(symbols: list[str], success_symbol: str) -> list[int]:
     if not symbols:
         return []
@@ -119,6 +131,13 @@ def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
         normalized_entropy=normalized,
         probabilities=probabilities,
     )
+
+
+def binary_entropy(p_success: float) -> float:
+    if p_success <= 0.0 or p_success >= 1.0:
+        return 0.0
+    p_failure = 1.0 - p_success
+    return -(p_success * log2(p_success) + p_failure * log2(p_failure))
 
 
 def running_success_rate(sequence: list[int]) -> list[float]:
@@ -242,6 +261,49 @@ def format_capture_report(
     )
 
 
+def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
+    if not history:
+        return "Binary Entropy Timeline\n-----------------------\nNo refresh snapshots yet."
+
+    values = [snapshot.binary_entropy_bits for snapshot in history]
+    current = history[-1]
+    lines = [
+        "Binary Entropy Timeline",
+        "-----------------------",
+        "Definition: Hb(p) = -p log2(p) - (1-p) log2(1-p)",
+        f"Current dominant symbol: {current.dominant_symbol}",
+        f"Current p(success): {current.success_probability:.6f}",
+        f"Current Hb(p): {current.binary_entropy_bits:.6f} bits",
+        "",
+        "Hb(p) over refresh ticks:",
+        ascii_rate_plot(values),
+    ]
+    return "\n".join(lines)
+
+
+def format_refresh_history(history: list[RefreshSnapshot]) -> str:
+    if not history:
+        return "Refresh History\n---------------\nNo snapshots yet."
+
+    lines = [
+        "Refresh History",
+        "---------------",
+        "tick | time(s) | total | +new | dominant   | p(success) | Hb(p)  | H(X)",
+    ]
+    for snapshot in history:
+        lines.append(
+            f"{snapshot.tick:>4} | "
+            f"{snapshot.elapsed_seconds:>7.2f} | "
+            f"{snapshot.total_packets:>5} | "
+            f"{snapshot.new_packets:>4} | "
+            f"{snapshot.dominant_symbol:<10} | "
+            f"{snapshot.success_probability:>10.4f} | "
+            f"{snapshot.binary_entropy_bits:>6.4f} | "
+            f"{snapshot.shannon_entropy_bits:>4.2f}"
+        )
+    return "\n".join(lines)
+
+
 class ShannonEntropyApp(App[None]):
     TITLE = "Shannon Entropy + Bernoulli Chart"
     SUB_TITLE = "Live Network Listener"
@@ -316,6 +378,8 @@ class ShannonEntropyApp(App[None]):
         self.sniffer: Any = None
         self.refresh_timer: Any = None
         self.last_output_text = ""
+        self.refresh_history: list[RefreshSnapshot] = []
+        self.last_snapshot_packet_count = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -359,6 +423,7 @@ class ShannonEntropyApp(App[None]):
                                 "Low H(X): traffic mix is concentrated and more predictable.",
                                 "High H(X): traffic mix is diverse and less predictable.",
                                 "Normalized H(X) is also shown for easier comparison across sessions.",
+                                "Binary entropy Hb(p) is plotted per refresh (0 to 1 bits).",
                                 "",
                                 "Why useful",
                                 "----------",
@@ -369,6 +434,7 @@ class ShannonEntropyApp(App[None]):
                                 "--------",
                                 "Start begins capture immediately. Refresh duration controls update cadence.",
                                 "Stop ends capture and keeps the latest report on screen.",
+                                "Refresh History preserves all timeframe snapshots for retrospective review.",
                                 "",
                                 "Packet capture may require Administrator privileges and Npcap on Windows.",
                                 "",
@@ -418,6 +484,8 @@ class ShannonEntropyApp(App[None]):
             self.capture_started_at = monotonic()
             with self.capture_lock:
                 self.captured_symbols = []
+            self.refresh_history = []
+            self.last_snapshot_packet_count = 0
 
             self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
             self.sniffer.start()
@@ -518,6 +586,23 @@ class ShannonEntropyApp(App[None]):
         projection_symbol = dominant_symbol(symbols)
         bernoulli_sequence = to_bernoulli_from_symbol_stream(symbols, projection_symbol)
         bernoulli_report = format_bernoulli_report(bernoulli_sequence, projection_symbol)
+        success_probability = sum(bernoulli_sequence) / len(bernoulli_sequence)
+        binary_entropy_bits = binary_entropy(success_probability)
+        total_packets = len(symbols)
+        new_packets = max(0, total_packets - self.last_snapshot_packet_count)
+        self.last_snapshot_packet_count = total_packets
+        self.refresh_history.append(
+            RefreshSnapshot(
+                tick=len(self.refresh_history) + 1,
+                elapsed_seconds=elapsed,
+                total_packets=total_packets,
+                new_packets=new_packets,
+                dominant_symbol=projection_symbol,
+                success_probability=success_probability,
+                binary_entropy_bits=binary_entropy_bits,
+                shannon_entropy_bits=entropy_result.entropy_bits,
+            )
+        )
 
         report_text = (
             format_entropy_summary(entropy_result)
@@ -528,6 +613,10 @@ class ShannonEntropyApp(App[None]):
                 self.refresh_seconds,
                 len(symbols),
             )
+            + "\n\n"
+            + format_binary_entropy_timeline(self.refresh_history)
+            + "\n\n"
+            + format_refresh_history(self.refresh_history)
             + "\n\n"
             + format_entropy_report(entropy_result)
             + "\n\n"
