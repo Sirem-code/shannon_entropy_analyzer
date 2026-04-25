@@ -3,7 +3,7 @@
 A modern, terminal-based user interface (TUI) for real-time network traffic analysis, using Shannon Entropy to detect anomalies, network shifts, and potential malicious activity.
 
 ## Overview
-The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and calculates the Shannon Entropy ($H(X)$) of the protocol mix in real-time. By observing the diversity of packets, it can intelligently identify when your network state shifts from its normal baseline.
+The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and calculates the Shannon Entropy of the protocol mix in real-time. By observing the diversity of packets, it can intelligently identify when your network state shifts from its normal baseline.
 
 ## Key Features
 - **Live Packet Sniffing**: Real-time traffic capture with customizable BPF filters (e.g., `tcp`, `port 443`).
