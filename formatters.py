@@ -300,5 +300,9 @@ def about_text() -> str:
             "- BPF Filter: Targeted analysis (e.g. 'tcp', 'port 443').",
             "- Shift Detection: Automated alerts for sudden changes in traffic mix.",
             "- Export: Save analysis history to CSV or MATLAB formats.",
+            "",
+            "Credits:",
+            "- Developer: Sirem",
+            "- GitHub: [GitHub Account URL/Username Here]",
         ]
     )
