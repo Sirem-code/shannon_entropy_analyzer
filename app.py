@@ -240,14 +240,6 @@ class ShannonEntropyApp(App[None]):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
                     with VerticalScroll(id="analyzer_scroll"):
-                        with Horizontal():
-                            with VerticalScroll():
-                                yield Label("Refresh duration (seconds)", classes="block-title")
-                                yield Input(value="10", placeholder="Example: 10", id="duration")
-                            with VerticalScroll():
-                                yield Label("Interface (optional)", classes="block-title")
-                                yield Input(value="", placeholder=f"Default: {detect_default_interface()}", id="interface")
-
                         yield Label("BPF Filter (optional, e.g. 'tcp port 443')", classes="block-title")
                         yield Input(value="", placeholder="Example: tcp or udp", id="filter")
 
@@ -348,15 +340,12 @@ class ShannonEntropyApp(App[None]):
             return
 
         try:
-            duration_input = self.query_one("#duration", Input).value
-            interface_input = self.query_one("#interface", Input).value
             filter_input = self.query_one("#filter", Input).value
             
-            duration_seconds = float(duration_input)
-            if duration_seconds <= 0:
-                raise ValueError("Refresh duration must be greater than zero.")
+            # Switch to a fixed 2.0s refresh for "live" feel
+            duration_seconds = 2.0
 
-            iface = interface_input.strip() or detect_default_interface()
+            iface = detect_default_interface()
             bpf_filter = filter_input.strip() or None
 
             self.refresh_seconds = duration_seconds
