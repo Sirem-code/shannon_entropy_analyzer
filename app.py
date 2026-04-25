@@ -314,7 +314,6 @@ class ShannonEntropyApp(App[None]):
 
     .activity-label {
         color: $text-muted;
-        font-size: small;
         margin-left: 1;
     }
 
