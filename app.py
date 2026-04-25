@@ -300,7 +300,7 @@ class ShannonEntropyApp(App[None]):
     #duration_select {
         layout: vertical;
         height: auto;
-        width: auto;
+        width: 20;
         border: solid $border;
         background: $surface;
         padding: 0 1;
