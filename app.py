@@ -118,9 +118,10 @@ class ShannonEntropyApp(App[None]):
     }
 
     ContentTab.-active {
-        color: $text !important;
-        background: transparent !important;
+        color: $primary-light;
+        background: $surface;
         border-bottom: tall $primary;
+        text-style: bold;
     }
 
     TabbedContent {
