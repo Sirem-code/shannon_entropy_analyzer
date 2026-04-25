@@ -116,7 +116,8 @@ class ShannonEntropyApp(App[None]):
     }
 
     ContentTab.-active {
-        color: #d1c4e9;
+        color: #d1c4e9 !important;
+        background: transparent !important;
         border-bottom: tall #7c4dff;
     }
 
@@ -126,6 +127,22 @@ class ShannonEntropyApp(App[None]):
 
     TabPane {
         padding: 1 2;
+    }
+
+    #start_capture {
+        background: #7c4dff;
+        color: $text;
+        border: tall #5e35b1;
+    }
+
+    #start_capture:hover {
+        background: #9575cd;
+    }
+
+    #status {
+        color: #7c4dff;
+        text-style: bold;
+        margin-top: 1;
     }
 
     .block-title {
