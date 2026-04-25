@@ -4,8 +4,16 @@ A simple Textual-based terminal UI app that:
 - Listens to real network traffic from the current device interface.
 - Computes Shannon entropy from captured packet-symbol observations.
 - Builds a Bernoulli process chart from the same captured stream.
+- Plots binary entropy per refresh tick in a dedicated Trends tab.
+- Keeps full per-refresh history for retrospective review.
 - Supports live start/stop capture with periodic report refresh.
 - Includes an About tab explaining the model and usage.
+
+## Tabs
+
+- **Analyzer**: live H(X), capture session summary, and symbol probability report.
+- **Trends**: binary entropy chart, refresh history table, and Bernoulli chart.
+- **About**: concise explanation and reference link.
 
 ## What to enter
 
