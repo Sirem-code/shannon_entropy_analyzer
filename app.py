@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
@@ -215,6 +215,25 @@ class ShannonEntropyApp(App[None]):
         color: $primary-light;
         overflow: hidden;
     }
+
+    .config-row {
+        height: auto;
+        margin-bottom: 1;
+        align: middle left;
+    }
+
+    .config-label {
+        width: 18;
+        color: $text-muted;
+    }
+
+    #duration {
+        width: 10;
+    }
+
+    #interval_mode {
+        margin-right: 2;
+    }
     """
 
     def __init__(self) -> None:
@@ -247,13 +266,15 @@ class ShannonEntropyApp(App[None]):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
                     with VerticalScroll(id="analyzer_scroll"):
-                        with Horizontal():
-                            with VerticalScroll():
-                                yield Label("BPF Filter (e.g. 'tcp')", classes="block-title")
-                                yield Input(value="", placeholder="Example: tcp or udp", id="filter")
-                            with VerticalScroll():
-                                yield Label("Refresh Duration (s)", classes="block-title")
-                                yield Input(value="2", placeholder="Default: 2", id="duration")
+                        with Horizontal(classes="config-row"):
+                            yield Label("BPF Filter:", classes="config-label")
+                            yield Input(value="", placeholder="e.g. tcp, udp, icmp", id="filter")
+                        
+                        with Horizontal(classes="config-row"):
+                            yield Label("Interval Mode:", classes="config-label")
+                            yield Switch(id="interval_mode", value=False)
+                            yield Label("Duration (s):", classes="config-label")
+                            yield Input(value="5", placeholder="Secs", id="duration")
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
@@ -356,12 +377,17 @@ class ShannonEntropyApp(App[None]):
         try:
             filter_input = self.query_one("#filter", Input).value
             duration_input = self.query_one("#duration", Input).value
+            interval_mode = self.query_one("#interval_mode", Switch).value
             
-            try:
-                duration_seconds = float(duration_input)
-                if duration_seconds <= 0: duration_seconds = 2.0
-            except ValueError:
-                duration_seconds = 2.0
+            if interval_mode:
+                try:
+                    duration_seconds = float(duration_input)
+                    if duration_seconds <= 0: duration_seconds = 5.0
+                except ValueError:
+                    duration_seconds = 5.0
+            else:
+                # "Live" mode: High-frequency refresh
+                duration_seconds = 0.2
 
             iface = None # Hardcoded to Auto for stability
             bpf_filter = filter_input.strip() or None
