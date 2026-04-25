@@ -284,6 +284,20 @@ class ShannonEntropyApp(App[None]):
                         with Horizontal(classes="config-row"):
                             yield Label("BPF Filter:", classes="config-label")
                             yield Input(value="", placeholder="e.g. tcp, udp, icmp", id="filter")
+                            yield Label("Presets:", classes="config-label")
+                            yield Select(
+                                [
+                                    ("All Traffic", ""),
+                                    ("TCP Only", "tcp"),
+                                    ("UDP Only", "udp"),
+                                    ("Web (80/443)", "tcp port 80 or tcp port 443"),
+                                    ("DNS (53)", "port 53"),
+                                    ("ICMP", "icmp"),
+                                    ("ARP", "arp"),
+                                ],
+                                id="filter_preset",
+                                prompt="Choose Preset..."
+                            )
                         
                         with Horizontal(classes="config-row"):
                             yield Label("Interval Mode:", classes="config-label")
@@ -400,6 +414,10 @@ class ShannonEntropyApp(App[None]):
             is_active = event.value
             self.query_one("#duration_label").set_class(not is_active, "hidden")
             self.query_one("#duration_select").set_class(not is_active, "hidden")
+
+    def on_select_changed(self, event: Select.Changed) -> None:
+        if event.select.id == "filter_preset" and event.value is not Select.BLANK:
+            self.query_one("#filter", Input).value = str(event.value)
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
