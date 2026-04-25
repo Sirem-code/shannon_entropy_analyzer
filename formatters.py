@@ -312,5 +312,7 @@ def about_text() -> str:
             "Credits:",
             "- Developer: Sirem",
             "- GitHub: https://github.com/Sirem-code",
+            "",
+            "[i][dim]May the entropy be with you[/dim][/i]"
         ]
     )
