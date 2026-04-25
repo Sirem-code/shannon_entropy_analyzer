@@ -231,8 +231,21 @@ class ShannonEntropyApp(App[None]):
     }
 
     .config-label {
-        width: 18;
+        width: 14;
         color: $text-muted;
+    }
+
+    #filter {
+        width: 35;
+        margin-right: 2;
+    }
+
+    #filter_preset {
+        width: 25;
+    }
+
+    #duration_select {
+        width: 25;
     }
 
     #duration {
