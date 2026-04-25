@@ -240,8 +240,13 @@ class ShannonEntropyApp(App[None]):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
                     with VerticalScroll(id="analyzer_scroll"):
-                        yield Label("BPF Filter (optional, e.g. 'tcp port 443')", classes="block-title")
-                        yield Input(value="", placeholder="Example: tcp or udp", id="filter")
+                        with Horizontal():
+                            with VerticalScroll():
+                                yield Label("BPF Filter (e.g. 'tcp')", classes="block-title")
+                                yield Input(value="", placeholder="Example: tcp or udp", id="filter")
+                            with VerticalScroll():
+                                yield Label("Network Interface", classes="block-title")
+                                yield Input(value="", placeholder="Default (auto)", id="interface")
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
@@ -341,15 +346,16 @@ class ShannonEntropyApp(App[None]):
 
         try:
             filter_input = self.query_one("#filter", Input).value
+            interface_input = self.query_one("#interface", Input).value
             
-            # Switch to a fixed 2.0s refresh for "live" feel
-            duration_seconds = 2.0
+            # High-frequency refresh for "truly live" feel
+            duration_seconds = 0.5
 
-            iface = detect_default_interface()
+            iface = interface_input.strip() or None
             bpf_filter = filter_input.strip() or None
 
             self.refresh_seconds = duration_seconds
-            self.capture_interface = iface
+            self.capture_interface = iface or "Default (Auto)"
             self.capture_filter = bpf_filter or "all traffic"
             self.capture_started_at = monotonic()
             
