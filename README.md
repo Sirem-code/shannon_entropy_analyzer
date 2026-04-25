@@ -15,6 +15,7 @@ A simple Textual-based terminal UI app that:
 - **Trends**: Shannon H(X) timeline (dynamic axis), binary entropy chart, refresh history table, and Bernoulli chart.
 - **Packet Analysis**: protocol class breakdown, packet-rate context, and protocol-mixing indicators.
 - **Investigate**: automatic shift alerts, alert timeline, trigger reasons, and before/after baseline comparison.
+- **Warnings**: queued WARNING/CRITICAL events with reasons and triage-friendly timeline.
 - **About**: concise explanation and reference link.
 
 ## What to enter
@@ -41,6 +42,7 @@ python app.py
 - Click **Start Listening** to begin packet capture immediately.
 - The analysis refreshes every configured duration while capture is active.
 - Click **Stop** to end capture and keep the final report on screen.
+- In **Investigate**, click **See Warnings** to jump directly to the warnings window.
 
 ## Export
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 
 from analysis import ascii_rate_plot, ascii_series_plot, running_success_rate
-from models import EntropyResult, RefreshSnapshot
+from models import EntropyResult, RefreshSnapshot, WarningEvent
 
 
 def format_entropy_summary(result: EntropyResult) -> str:
@@ -233,6 +233,31 @@ def format_investigation_report(history: list[RefreshSnapshot]) -> str:
         lines.append(
             f"Latest alert: tick {latest.tick} ({latest.alert_level}, score {latest.shift_score:.2f})"
         )
+
+    lines.append("")
+    lines.append("Use 'See Warnings' to open the warning queue window.")
+
+    return "\n".join(lines)
+
+
+def format_warning_queue(warnings: list[WarningEvent]) -> str:
+    if not warnings:
+        return "Warnings Window\n---------------\nNo WARNING/CRITICAL events have been queued."
+
+    lines = [
+        "Warnings Window",
+        "---------------",
+        f"Queued warning events: {len(warnings)}",
+        "tick | time(s) | level    | score | status",
+    ]
+
+    recent = warnings[-30:]
+    for event in recent:
+        lines.append(
+            f"{event.tick:>4} | {event.elapsed_seconds:>7.2f} | {event.level:<8} | {event.score:>5.2f} | {event.status}"
+        )
+        for reason in event.reasons:
+            lines.append(f"      reason: {reason}")
 
     return "\n".join(lines)
 

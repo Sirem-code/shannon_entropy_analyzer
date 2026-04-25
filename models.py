@@ -30,3 +30,13 @@ class RefreshSnapshot:
     shift_score: float = 0.0
     alert_level: str = "NONE"
     alert_reasons: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WarningEvent:
+    tick: int
+    elapsed_seconds: float
+    level: str
+    score: float
+    reasons: list[str]
+    status: str = "NEW"

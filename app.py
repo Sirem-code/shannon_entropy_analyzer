@@ -24,8 +24,9 @@ from formatters import (
     format_refresh_history,
     format_shannon_entropy_timeline,
     format_trends_metrics,
+    format_warning_queue,
 )
-from models import RefreshSnapshot
+from models import RefreshSnapshot, WarningEvent
 from shift_detection import detect_shift
 
 
@@ -81,7 +82,8 @@ class ShannonEntropyApp(App[None]):
 
     #export_csv,
     #export_matlab,
-    #clear_charts {
+    #clear_charts,
+    #see_warnings {
         width: 18;
         margin-right: 1;
     }
@@ -90,6 +92,7 @@ class ShannonEntropyApp(App[None]):
     #trends_output,
     #packet_output,
     #investigate_output,
+    #warnings_output,
     #about_text {
         height: auto;
         border: round green;
@@ -101,6 +104,7 @@ class ShannonEntropyApp(App[None]):
     #trends_scroll,
     #packet_scroll,
     #investigate_scroll,
+    #warnings_scroll,
     #about_scroll {
         height: 1fr;
         overflow: auto;
@@ -128,8 +132,13 @@ class ShannonEntropyApp(App[None]):
         self.last_trends_text = ""
         self.last_packet_text = ""
         self.last_investigate_text = ""
+        self.last_warnings_text = ""
         self.refresh_history: list[RefreshSnapshot] = []
+        self.warning_events: list[WarningEvent] = []
         self.last_snapshot_packet_count = 0
+        self.warning_cooldown_ticks = 2
+        self.last_warning_tick = -9999
+        self.consecutive_warning_ticks = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -174,9 +183,18 @@ class ShannonEntropyApp(App[None]):
 
                 with TabPane("Investigate", id="investigate"):
                     with VerticalScroll(id="investigate_scroll"):
+                        with Horizontal(id="trend_controls"):
+                            yield Button("See Warnings", id="see_warnings")
                         yield Static(
                             "Shift detection alerts and investigation timeline will appear here.",
                             id="investigate_output",
+                        )
+
+                with TabPane("Warnings", id="warnings"):
+                    with VerticalScroll(id="warnings_scroll"):
+                        yield Static(
+                            "WARNING/CRITICAL queue appears here.",
+                            id="warnings_output",
                         )
 
                 with TabPane("About", id="about"):
@@ -199,6 +217,10 @@ class ShannonEntropyApp(App[None]):
             return
         if event.button.id == "clear_charts":
             self.clear_charts()
+            return
+        if event.button.id == "see_warnings":
+            tabs = self.query_one(TabbedContent)
+            tabs.active = "warnings"
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
@@ -239,6 +261,10 @@ class ShannonEntropyApp(App[None]):
             self.last_trends_text = ""
             self.last_packet_text = ""
             self.last_investigate_text = ""
+            self.last_warnings_text = ""
+            self.warning_events = []
+            self.last_warning_tick = -9999
+            self.consecutive_warning_ticks = 0
 
             self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
             self.sniffer.start()
@@ -279,6 +305,7 @@ class ShannonEntropyApp(App[None]):
         trends_output = self.query_one("#trends_output", Static)
         packet_output = self.query_one("#packet_output", Static)
         investigate_output = self.query_one("#investigate_output", Static)
+        warnings_output = self.query_one("#warnings_output", Static)
         status = self.query_one("#status", Label)
 
         if self.refresh_timer is not None:
@@ -302,6 +329,7 @@ class ShannonEntropyApp(App[None]):
             trends_output.update(self.last_trends_text + "\n\nCapture stopped by user.")
             packet_output.update(self.last_packet_text + "\n\nCapture stopped by user.")
             investigate_output.update(self.last_investigate_text + "\n\nCapture stopped by user.")
+            warnings_output.update(self.last_warnings_text + "\n\nCapture stopped by user.")
         else:
             status.update("Status: Idle")
 
@@ -399,6 +427,7 @@ class ShannonEntropyApp(App[None]):
         trends_output = self.query_one("#trends_output", Static)
         packet_output = self.query_one("#packet_output", Static)
         investigate_output = self.query_one("#investigate_output", Static)
+        warnings_output = self.query_one("#warnings_output", Static)
         status = self.query_one("#status", Label)
 
         with self.capture_lock:
@@ -415,15 +444,18 @@ class ShannonEntropyApp(App[None]):
             trends_text = "No trend data yet. Capture is active but no packets have been observed."
             packet_text = "No packet analysis yet. Capture is active but no packets have been observed."
             investigate_text = "No investigation data yet. Capture is active but no packets have been observed."
+            warnings_text = "Warnings window\n---------------\nNo WARNING/CRITICAL events have been queued."
             self.last_analyzer_text = analyzer_text
             self.last_trends_text = trends_text
             self.last_packet_text = packet_text
             self.last_investigate_text = investigate_text
+            self.last_warnings_text = warnings_text
             analyzer_output.update(analyzer_text)
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
             trends_output.update(trends_text)
             packet_output.update(packet_text)
             investigate_output.update(investigate_text)
+            warnings_output.update(warnings_text)
             if self.is_listening:
                 status.update("Status: Listening...")
             return
@@ -446,9 +478,28 @@ class ShannonEntropyApp(App[None]):
             current_dominant_share=success_probability,
         )
 
+        tick = len(self.refresh_history) + 1
+        final_level = shift.level
+        final_score = shift.score
+        final_reasons = list(shift.reasons)
+
+        if shift.level == "WARNING":
+            if tick - self.last_warning_tick <= self.warning_cooldown_ticks:
+                self.consecutive_warning_ticks += 1
+            else:
+                self.consecutive_warning_ticks = 1
+            if self.consecutive_warning_ticks >= 3:
+                final_level = "CRITICAL"
+                final_score = max(final_score, 4.0)
+                final_reasons.append("Escalated: repeated WARNING events in short interval")
+        elif shift.level == "CRITICAL":
+            self.consecutive_warning_ticks += 1
+        else:
+            self.consecutive_warning_ticks = 0
+
         self.refresh_history.append(
             RefreshSnapshot(
-                tick=len(self.refresh_history) + 1,
+                tick=tick,
                 elapsed_seconds=elapsed,
                 total_packets=total_packets,
                 new_packets=new_packets,
@@ -460,11 +511,24 @@ class ShannonEntropyApp(App[None]):
                 baseline_shannon_bits=shift.baseline_shannon_bits,
                 baseline_packet_rate=shift.baseline_packet_rate,
                 dominant_share_delta=shift.dominant_share_delta,
-                shift_score=shift.score,
-                alert_level=shift.level,
-                alert_reasons=shift.reasons,
+                shift_score=final_score,
+                alert_level=final_level,
+                alert_reasons=final_reasons,
             )
         )
+
+        if final_level in {"WARNING", "CRITICAL"}:
+            if (tick - self.last_warning_tick > self.warning_cooldown_ticks) or final_level == "CRITICAL":
+                self.warning_events.append(
+                    WarningEvent(
+                        tick=tick,
+                        elapsed_seconds=elapsed,
+                        level=final_level,
+                        score=final_score,
+                        reasons=final_reasons,
+                    )
+                )
+                self.last_warning_tick = tick
 
         analyzer_text = (
             format_entropy_summary(entropy_result)
@@ -486,16 +550,19 @@ class ShannonEntropyApp(App[None]):
 
         packet_text = format_packet_analysis(symbols, elapsed)
         investigate_text = format_investigation_report(self.refresh_history)
+        warnings_text = format_warning_queue(self.warning_events)
 
         self.last_analyzer_text = analyzer_text
         self.last_trends_text = trends_text
         self.last_packet_text = packet_text
         self.last_investigate_text = investigate_text
+        self.last_warnings_text = warnings_text
         analyzer_output.update(analyzer_text)
         trends_metrics.update(format_trends_metrics(self.refresh_history))
         trends_output.update(trends_text)
         packet_output.update(packet_text)
         investigate_output.update(investigate_text)
+        warnings_output.update(warnings_text)
 
         if self.is_listening:
             status.update("Status: Listening...")
