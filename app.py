@@ -328,6 +328,8 @@ class ShannonEntropyApp(App[None]):
 
                 with TabPane("Warnings", id="warnings"):
                     with VerticalScroll(id="warnings_scroll"):
+                        with Horizontal(id="trend_controls"):
+                            yield Button("Back", id="back_to_investigate")
                         yield Static(
                             "WARNING/CRITICAL queue appears here.",
                             id="warnings_output",
@@ -357,6 +359,11 @@ class ShannonEntropyApp(App[None]):
         if event.button.id == "see_warnings":
             tabs = self.query_one(TabbedContent)
             tabs.active = "warnings"
+            return
+        if event.button.id == "back_to_investigate":
+            tabs = self.query_one(TabbedContent)
+            tabs.active = "investigate"
+            return
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
