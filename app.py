@@ -171,7 +171,7 @@ class ShannonEntropyApp(App[None]):
     }
 
     Button {
-        width: 1fr;
+        width: 20;
         margin-right: 1;
         border: none;
         text-style: bold;
