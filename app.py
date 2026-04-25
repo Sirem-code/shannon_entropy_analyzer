@@ -183,13 +183,13 @@ class ShannonEntropyApp(App[None]):
     Tabs {
         background: $surface;
         border-bottom: solid $border;
-        margin-bottom: 0;
+        margin-bottom: 1;
+        height: 3;
     }
 
     Tab, ContentTab {
         color: $text-muted;
         padding: 0 2;
-        border: none;
     }
 
     Tab:hover, ContentTab:hover {
@@ -199,14 +199,15 @@ class ShannonEntropyApp(App[None]):
 
     Tab.--active, Tab.-active, ContentTab.-active, ContentTab.--active {
         color: $primary !important;
-        background: transparent !important;
+        background: $background !important;
         text-style: bold;
-        border-bottom: solid $primary;
     }
 
     Underline > .underline--bar {
-        display: none;
+        background: $primary;
     }
+
+
 
     TabPane {
         padding: 1 1;
@@ -400,9 +401,9 @@ class ShannonEntropyApp(App[None]):
         with Container(id="main"):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
-                    with VerticalScroll():
+                    with Vertical():
                         with Horizontal(id="analyzer_dashboard"):
-                            with VerticalScroll(classes="col-left card"):
+                            with Vertical(classes="col-left card"):
                                 yield Label("Configuration", classes="block-title")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Filter:", classes="config-label")
@@ -427,7 +428,7 @@ class ShannonEntropyApp(App[None]):
                                     yield Label("Interval:", classes="config-label")
                                     yield Switch(id="interval_mode", value=False)
                                 
-                                with VerticalScroll(id="duration_container", classes="hidden"):
+                                with Vertical(id="duration_container", classes="hidden"):
                                     yield Label("Capture Speed:", classes="config-label")
                                     with RadioSet(id="duration_select"):
                                         yield RadioButton("Slow (10s)", id="speed_10")
@@ -439,7 +440,7 @@ class ShannonEntropyApp(App[None]):
                                 
                                 yield Label("Status: Idle", id="status")
 
-                            with VerticalScroll(classes="col-right card"):
+                            with Vertical(classes="col-right card"):
                                 yield Label("Real-time Activity", classes="block-title")
                                 yield ActivityMeter(id="activity_meter")
                                 yield Label("Counter: [b]0[/b] packets", id="packet_counter")
@@ -454,11 +455,11 @@ class ShannonEntropyApp(App[None]):
                 with TabPane("Trends", id="trends"):
                     with VerticalScroll():
                         with Horizontal(id="trends_dashboard"):
-                            with VerticalScroll(classes="col-left card"):
+                            with Vertical(classes="col-left card"):
                                 yield Label("Key Metrics Summary", classes="block-title")
                                 yield Static("Capture not started.", id="trends_metrics")
                             
-                            with VerticalScroll(classes="col-right card"):
+                            with Vertical(classes="col-right card"):
                                 yield Label("Export & Controls", classes="block-title")
                                 with Horizontal():
                                     yield Button("CSV", id="export_csv")
@@ -501,26 +502,26 @@ class ShannonEntropyApp(App[None]):
                 with TabPane("Alert Rules", id="alert_rules"):
                     with VerticalScroll():
                         with Horizontal(id="rules_dashboard"):
-                            with VerticalScroll(classes="col-left card"):
+                            with Vertical(classes="col-left card"):
                                 yield Label("Detection Thresholds", classes="block-title")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Entropy Drop:", classes="rule-label")
-                                    yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input")
+                                    yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input", tooltip="Alerts if entropy drops abruptly by this amount.")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Dominant Delta:", classes="rule-label")
-                                    yield Input(value="0.15", id="rule_dominant_share", classes="rule-input")
+                                    yield Input(value="0.15", id="rule_dominant_share", classes="rule-input", tooltip="Alerts if a single protocol's share jumps by this percentage.")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Rate Multiplier:", classes="rule-label")
-                                    yield Input(value="2.0", id="rule_packet_rate", classes="rule-input")
+                                    yield Input(value="2.0", id="rule_packet_rate", classes="rule-input", tooltip="Alerts if packet rate exceeds baseline by this multiplier.")
                             
-                            with VerticalScroll(classes="col-right card"):
+                            with Vertical(classes="col-right card"):
                                 yield Label("Heuristics", classes="block-title")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Flood Rate:", classes="rule-label")
-                                    yield Input(value="3.0", id="rule_flood_rate", classes="rule-input")
+                                    yield Input(value="3.0", id="rule_flood_rate", classes="rule-input", tooltip="Multiplier to trigger a 'Flood' assessment.")
                                 with Horizontal(classes="compact-row"):
                                     yield Label("Scan Entropy:", classes="rule-label")
-                                    yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input")
+                                    yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input", tooltip="Min entropy required to confirm a port scan.")
 
                 with TabPane("About", id="about"):
                     with VerticalScroll():
