@@ -212,11 +212,19 @@ def format_investigation_report(history: list[RefreshSnapshot]) -> str:
         f"Dominant share delta: {current.dominant_share_delta:+.2%}",
     ]
 
-    if current.alert_reasons:
-        lines.append("")
-        lines.append("Current trigger reasons:")
-        for reason in current.alert_reasons:
+    lines.append("")
+    lines.append("Latest trigger reasons:")
+    recent_reasons = []
+    for item in reversed(history):
+        if item.alert_reasons:
+            recent_reasons = item.alert_reasons
+            break
+            
+    if recent_reasons:
+        for reason in recent_reasons:
             lines.append(f"- {reason}")
+    else:
+        lines.append("- (System normal, no active triggers)")
 
     lines.append("")
     lines.append("Alert timeline (recent ticks):")

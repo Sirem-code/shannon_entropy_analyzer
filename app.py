@@ -333,6 +333,11 @@ class ShannonEntropyApp(App[None]):
         text-style: bold;
         margin: 1 0;
     }
+
+    .section-desc {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
     """
 
     def __init__(self) -> None:
@@ -453,26 +458,28 @@ class ShannonEntropyApp(App[None]):
                 with TabPane("Alert Rules", id="alert_rules"):
                     with VerticalScroll(id="rules_scroll"):
                         yield Label("Base Shift Detection Thresholds", classes="block-title")
+                        yield Label("These rules detect statistically significant deviations from the recent baseline traffic.", classes="section-desc")
                         with Horizontal(classes="config-row"):
                             yield Label("Entropy Drop Tolerance:", classes="rule-label")
-                            yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input")
+                            yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input", tooltip="Alerts if entropy drops abruptly by this amount.")
                         with Horizontal(classes="config-row"):
                             yield Label("Dominant Share Delta:", classes="rule-label")
-                            yield Input(value="0.15", id="rule_dominant_share", classes="rule-input")
+                            yield Input(value="0.15", id="rule_dominant_share", classes="rule-input", tooltip="Alerts if a single protocol's share jumps by this percentage.")
                         with Horizontal(classes="config-row"):
                             yield Label("Packet Rate Multiplier:", classes="rule-label")
-                            yield Input(value="2.0", id="rule_packet_rate", classes="rule-input")
+                            yield Input(value="2.0", id="rule_packet_rate", classes="rule-input", tooltip="Alerts if packet rate exceeds baseline by this multiplier.")
                         
                         yield Label("Compound Heuristic Multipliers", classes="block-title")
+                        yield Label("Advanced rules that combine packet rate and entropy to detect specific attacks.", classes="section-desc")
                         with Horizontal(classes="config-row"):
                             yield Label("Flood Packet Rate Mul:", classes="rule-label")
-                            yield Input(value="3.0", id="rule_flood_rate", classes="rule-input")
+                            yield Input(value="3.0", id="rule_flood_rate", classes="rule-input", tooltip="Multiplier to trigger a 'Flood' assessment.")
                         with Horizontal(classes="config-row"):
                             yield Label("Flood Entropy Ceiling:", classes="rule-label")
-                            yield Input(value="1.0", id="rule_flood_entropy", classes="rule-input")
+                            yield Input(value="1.0", id="rule_flood_entropy", classes="rule-input", tooltip="Max entropy limit to confirm a flood/DoS attack.")
                         with Horizontal(classes="config-row"):
                             yield Label("Scan Entropy Floor:", classes="rule-label")
-                            yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input")
+                            yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input", tooltip="Min entropy required to confirm a port scan/reconnaissance.")
 
                 with TabPane("About", id="about"):
                     with VerticalScroll(id="about_scroll"):
