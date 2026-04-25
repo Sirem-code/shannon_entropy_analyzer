@@ -76,7 +76,8 @@ class ShannonEntropyApp(App[None]):
     }
 
     #export_csv,
-    #export_matlab {
+    #export_matlab,
+    #clear_charts {
         width: 18;
         margin-right: 1;
     }
@@ -131,6 +132,7 @@ class ShannonEntropyApp(App[None]):
                     with Horizontal(id="trend_controls"):
                         yield Button("Export CSV", id="export_csv")
                         yield Button("Export MATLAB", id="export_matlab")
+                        yield Button("Clear Charts", id="clear_charts")
                     yield Static(
                         "Binary entropy chart and refresh history will appear here after capture starts.",
                         id="trends_output",
@@ -152,6 +154,9 @@ class ShannonEntropyApp(App[None]):
             return
         if event.button.id == "export_matlab":
             self.export_history_matlab()
+            return
+        if event.button.id == "clear_charts":
+            self.clear_charts()
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
@@ -281,6 +286,22 @@ class ShannonEntropyApp(App[None]):
         output_path = export_refresh_history_matlab_m(self.refresh_history, output_dir=str(Path.cwd()))
         trends_output.update(self.last_trends_text + f"\n\nExported MATLAB .m: {output_path}")
 
+    def clear_charts(self) -> None:
+        trends_output = self.query_one("#trends_output", Static)
+        status = self.query_one("#status", Label)
+        with self.capture_lock:
+            current_packet_count = len(self.captured_symbols)
+
+        self.refresh_history = []
+        self.last_snapshot_packet_count = current_packet_count
+        self.last_trends_text = "Charts and refresh history were cleared."
+        trends_output.update(self.last_trends_text)
+
+        if self.is_listening:
+            status.update("Status: Listening... (charts reset)")
+        else:
+            status.update("Status: Idle (charts cleared)")
+
     def refresh_live_report(self) -> None:
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
@@ -341,7 +362,7 @@ class ShannonEntropyApp(App[None]):
         trends_text = (
             format_shannon_entropy_timeline(self.refresh_history)
             + "\n\n"
-            format_binary_entropy_timeline(self.refresh_history)
+            + format_binary_entropy_timeline(self.refresh_history)
             + "\n\n"
             + format_refresh_history(self.refresh_history)
             + "\n\n"

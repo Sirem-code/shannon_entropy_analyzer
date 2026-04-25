@@ -44,6 +44,7 @@ python app.py
 
 - In the **Trends** tab, use **Export CSV** to save refresh history as a CSV file.
 - Use **Export MATLAB** to save a MATLAB-compatible `.m` file with the same history matrix.
+- Use **Clear Charts** to reset trend plots/history and start charting from the current moment.
 
 ## Notes
 

@@ -81,11 +81,14 @@ def format_binary_entropy_timeline(history: list[RefreshSnapshot]) -> str:
 
     values = [snapshot.binary_entropy_bits for snapshot in history]
     current = history[-1]
+    previous_packets = history[-2].total_packets if len(history) > 1 else 0
+    packet_delta = current.total_packets - previous_packets
     lines = [
         "Binary Entropy Timeline",
         "-----------------------",
-        "Definition: Hb(p) = -p log2(p) - (1-p) log2(1-p)",
-        f"Current dominant symbol: {current.dominant_symbol}",
+        f"Elapsed time: {current.elapsed_seconds:.2f} s",
+        f"Packets observed: {current.total_packets}",
+        f"Packets since last tick: {packet_delta}",
         f"Current p(success): {current.success_probability:.6f}",
         f"Current Hb(p): {current.binary_entropy_bits:.6f} bits",
         "",
