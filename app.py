@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch, Select
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch, Select, RadioSet, RadioButton
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
@@ -71,6 +71,7 @@ class ShannonEntropyApp(App[None]):
         ("ctrl+q", "quit", "Quit"),
         ("ctrl+a", "toggle_analyze", "Analyze"),
         ("ctrl+e", "export_csv", "Export CSV"),
+        ("ctrl+m", "export_matlab", "Export MATLAB"),
         ("f1", "show_about", "About"),
     ]
     TITLE = "Shannon Entropy Analyzer"
@@ -197,12 +198,12 @@ class ShannonEntropyApp(App[None]):
     }
 
     #start_capture {
-        background: $primary;
-        color: $text;
+        background: $success;
+        color: #000000;
     }
 
     #start_capture:hover {
-        background: $primary-light;
+        background: #69f0ae;
     }
 
     #stop_capture {
@@ -293,7 +294,10 @@ class ShannonEntropyApp(App[None]):
     }
 
     #duration_select {
-        width: 25;
+        layout: horizontal;
+        height: auto;
+        width: auto;
+        border: none;
     }
 
     #duration {
@@ -364,12 +368,10 @@ class ShannonEntropyApp(App[None]):
                             yield Label("Interval Mode:", classes="config-label")
                             yield Switch(id="interval_mode", value=False)
                             yield Label("Speed:", id="duration_label", classes="config-label hidden")
-                            yield Select(
-                                [("Slow (10s)", 10.0), ("Mid (5s)", 5.0), ("Fast (2s)", 2.0)],
-                                value=5.0,
-                                id="duration_select",
-                                classes="hidden"
-                            )
+                            with RadioSet(id="duration_select", classes="hidden"):
+                                yield RadioButton("Slow (10s)", id="speed_10")
+                                yield RadioButton("Mid (5s)", id="speed_5", value=True)
+                                yield RadioButton("Fast (2s)", id="speed_2")
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
@@ -467,6 +469,9 @@ class ShannonEntropyApp(App[None]):
     def action_export_csv(self) -> None:
         self.export_history_csv()
 
+    def action_export_matlab(self) -> None:
+        self.export_history_matlab()
+
     def action_show_about(self) -> None:
         self.query_one(TabbedContent).active = "about"
 
@@ -504,8 +509,14 @@ class ShannonEntropyApp(App[None]):
             interval_mode = self.query_one("#interval_mode", Switch).value
             
             if interval_mode:
-                duration_select = self.query_one("#duration_select", Select)
-                duration_seconds = float(duration_select.value) if duration_select.value is not Select.BLANK else 5.0
+                duration_select = self.query_one("#duration_select", RadioSet)
+                pressed = duration_select.pressed_button
+                if pressed is None or pressed.id == "speed_5":
+                    duration_seconds = 5.0
+                elif pressed.id == "speed_10":
+                    duration_seconds = 10.0
+                else:
+                    duration_seconds = 2.0
             else:
                 # "Live" mode: High-frequency refresh
                 duration_seconds = 0.2
