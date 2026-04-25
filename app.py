@@ -100,6 +100,26 @@ class ShannonEntropyApp(App[None]):
         padding: 1 2;
     }
 
+    Tabs {
+        background: $surface;
+        color: #7c4dff;
+        text-style: bold;
+    }
+
+    ContentTab {
+        color: #7c4dff;
+    }
+
+    ContentTab:hover {
+        color: #b388ff;
+        background: $surface-lighten-1;
+    }
+
+    ContentTab.-active {
+        color: #d1c4e9;
+        border-bottom: tall #7c4dff;
+    }
+
     TabbedContent {
         height: 1fr;
     }
