@@ -298,10 +298,13 @@ class ShannonEntropyApp(App[None]):
     }
 
     #duration_select {
-        layout: horizontal;
+        layout: vertical;
         height: auto;
         width: auto;
-        border: none;
+        border: solid $border;
+        background: $surface;
+        padding: 0 1;
+        margin-left: 1;
     }
 
     #duration {
