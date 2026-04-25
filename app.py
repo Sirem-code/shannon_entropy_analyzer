@@ -180,7 +180,6 @@ class ShannonEntropyApp(App[None]):
     }
 
     #start_capture {
-        width: 2fr;
         background: $primary;
         color: $text;
     }
