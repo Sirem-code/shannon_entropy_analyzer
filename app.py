@@ -61,7 +61,7 @@ class ActivityMeter(Static):
     def render_meter(self) -> None:
         bar_len = int(self.intensity * 20)
         bar = "█" * bar_len + "░" * (20 - bar_len)
-        self.update(f"[#b388ff]{bar}[/]")
+        self.update(f"[#00e5ff]{bar}[/]")
 
 
 class ShannonEntropyApp(App[None]):
@@ -77,12 +77,12 @@ class ShannonEntropyApp(App[None]):
     SUB_TITLE = "Advanced Network Diagnostics"
 
     CSS = """
-    $background: #0f0f0f;
-    $surface: #1a1a1a;
-    $surface-lighten-1: #252525;
-    $primary: #7c4dff;
-    $primary-light: #b388ff;
-    $primary-dark: #6200ea;
+    $background: #0a0c10;
+    $surface: #161b22;
+    $surface-lighten-1: #21262d;
+    $primary: #00e5ff;
+    $primary-light: #b8ffff;
+    $primary-dark: #00b2cc;
     $secondary: #ffab00;
     $error: #ff5252;
     $success: #00e676;
@@ -118,7 +118,7 @@ class ShannonEntropyApp(App[None]):
     }
 
     ContentTab.-active {
-        color: $primary-light;
+        color: #ffffff;
         background: $surface;
         border-bottom: tall $primary;
         text-style: bold;
