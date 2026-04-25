@@ -197,18 +197,22 @@ class ShannonEntropyApp(App[None]):
         color: $text;
     }
 
-    #start_capture {
+    #start_capture.btn-start {
         background: $success;
         color: #000000;
     }
 
-    #start_capture:hover {
+    #start_capture.btn-start:hover {
         background: #69f0ae;
     }
 
-    #stop_capture {
-        background: $secondary;
-        color: black;
+    #start_capture.btn-stop {
+        background: $error;
+        color: #ffffff;
+    }
+
+    #start_capture.btn-stop:hover {
+        background: #ff8a80;
     }
 
     #trend_controls {
@@ -374,8 +378,7 @@ class ShannonEntropyApp(App[None]):
                                 yield RadioButton("Fast (2s)", id="speed_2")
 
                         with Horizontal(id="controls"):
-                            yield Button("Start Listening", variant="primary", id="start_capture")
-                            yield Button("Stop", variant="warning", id="stop_capture", disabled=True)
+                            yield Button("Start Listening", variant="primary", id="start_capture", classes="btn-start")
 
                         yield Label("Packet Activity", classes="activity-label")
                         yield ActivityMeter(id="activity_meter")
@@ -436,10 +439,10 @@ class ShannonEntropyApp(App[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "start_capture":
-            self.start_capture()
-            return
-        if event.button.id == "stop_capture":
-            self.stop_capture(user_requested=True)
+            if self.is_listening:
+                self.stop_capture(user_requested=True)
+            else:
+                self.start_capture()
             return
         if event.button.id == "export_csv":
             self.export_history_csv()
@@ -619,9 +622,14 @@ class ShannonEntropyApp(App[None]):
 
     def update_control_state(self) -> None:
         start_btn = self.query_one("#start_capture", Button)
-        stop_btn = self.query_one("#stop_capture", Button)
-        start_btn.disabled = self.is_listening
-        stop_btn.disabled = not self.is_listening
+        if self.is_listening:
+            start_btn.label = "Stop"
+            start_btn.remove_class("btn-start")
+            start_btn.add_class("btn-stop")
+        else:
+            start_btn.label = "Start Listening"
+            start_btn.remove_class("btn-stop")
+            start_btn.add_class("btn-start")
 
     def _on_packet(self, packet: Any) -> None:
         symbol = packet_to_symbol(packet)
