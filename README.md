@@ -14,6 +14,7 @@ A simple Textual-based terminal UI app that:
 - **Analyzer**: live H(X), capture session summary, and symbol probability report.
 - **Trends**: Shannon H(X) timeline (dynamic axis), binary entropy chart, refresh history table, and Bernoulli chart.
 - **Packet Analysis**: protocol class breakdown, packet-rate context, and protocol-mixing indicators.
+- **Investigate**: automatic shift alerts, alert timeline, trigger reasons, and before/after baseline comparison.
 - **About**: concise explanation and reference link.
 
 ## What to enter
@@ -47,6 +48,7 @@ python app.py
 - Use **Export MATLAB** to save a MATLAB-compatible `.m` file with the same history matrix.
 - Export actions create/use an `exports` folder in the project directory and show the saved file path in the Trends panel.
 - Use **Clear Charts** to reset trend plots/history and start charting from the current moment.
+- Exports now include shift detection fields (shift score, alert level, alert reasons, and baseline comparison values).
 
 ## Notes
 

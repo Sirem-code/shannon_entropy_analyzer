@@ -192,6 +192,51 @@ def format_packet_analysis(symbols: list[str], elapsed_seconds: float) -> str:
     return "\n".join(lines)
 
 
+def format_investigation_report(history: list[RefreshSnapshot]) -> str:
+    if not history:
+        return "Investigation\n-------------\nNo refresh snapshots yet."
+
+    current = history[-1]
+    alerts = [item for item in history if item.alert_level != "NONE"]
+    recent = history[-12:]
+
+    lines = [
+        "Investigation",
+        "-------------",
+        f"Current alert level: {current.alert_level}",
+        f"Current shift score: {current.shift_score:.2f}",
+        "",
+        "Before/after baseline comparison:",
+        f"H(X): {current.shannon_entropy_bits:.4f} vs baseline {current.baseline_shannon_bits:.4f}",
+        f"Packet rate: {current.packet_rate:.2f}/s vs baseline {current.baseline_packet_rate:.2f}/s",
+        f"Dominant share delta: {current.dominant_share_delta:+.2%}",
+    ]
+
+    if current.alert_reasons:
+        lines.append("")
+        lines.append("Current trigger reasons:")
+        for reason in current.alert_reasons:
+            lines.append(f"- {reason}")
+
+    lines.append("")
+    lines.append("Alert timeline (recent ticks):")
+    lines.append("tick | time(s) | level    | score")
+    for item in recent:
+        lines.append(
+            f"{item.tick:>4} | {item.elapsed_seconds:>7.2f} | {item.alert_level:<8} | {item.shift_score:>5.2f}"
+        )
+
+    lines.append("")
+    lines.append(f"Active alerts in session: {len(alerts)}")
+    if alerts:
+        latest = alerts[-1]
+        lines.append(
+            f"Latest alert: tick {latest.tick} ({latest.alert_level}, score {latest.shift_score:.2f})"
+        )
+
+    return "\n".join(lines)
+
+
 def format_refresh_history(history: list[RefreshSnapshot]) -> str:
     if not history:
         return "Refresh History\n---------------\nNo snapshots yet."

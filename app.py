@@ -19,12 +19,14 @@ from formatters import (
     format_capture_report,
     format_entropy_report,
     format_entropy_summary,
+    format_investigation_report,
     format_packet_analysis,
     format_refresh_history,
     format_shannon_entropy_timeline,
     format_trends_metrics,
 )
 from models import RefreshSnapshot
+from shift_detection import detect_shift
 
 
 class ShannonEntropyApp(App[None]):
@@ -94,6 +96,7 @@ class ShannonEntropyApp(App[None]):
     #analyzer_output,
     #trends_output,
     #packet_output,
+    #investigate_output,
     #about_text {
         height: auto;
         border: round green;
@@ -104,6 +107,7 @@ class ShannonEntropyApp(App[None]):
     #analyzer_scroll,
     #trends_scroll,
     #packet_scroll,
+    #investigate_scroll,
     #about_scroll {
         height: 1fr;
         overflow: auto;
@@ -130,6 +134,7 @@ class ShannonEntropyApp(App[None]):
         self.last_analyzer_text = ""
         self.last_trends_text = ""
         self.last_packet_text = ""
+        self.last_investigate_text = ""
         self.refresh_history: list[RefreshSnapshot] = []
         self.last_snapshot_packet_count = 0
 
@@ -173,6 +178,13 @@ class ShannonEntropyApp(App[None]):
                         yield Static(
                             "Protocol distribution and mixing metrics will appear here after capture starts.",
                             id="packet_output",
+                        )
+
+                with TabPane("Investigate", id="investigate"):
+                    with VerticalScroll(id="investigate_scroll"):
+                        yield Static(
+                            "Shift detection alerts and investigation timeline will appear here.",
+                            id="investigate_output",
                         )
 
                 with TabPane("About", id="about"):
@@ -234,6 +246,7 @@ class ShannonEntropyApp(App[None]):
             self.last_analyzer_text = ""
             self.last_trends_text = ""
             self.last_packet_text = ""
+            self.last_investigate_text = ""
 
             self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
             self.sniffer.start()
@@ -273,6 +286,7 @@ class ShannonEntropyApp(App[None]):
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
         packet_output = self.query_one("#packet_output", Static)
+        investigate_output = self.query_one("#investigate_output", Static)
         status = self.query_one("#status", Label)
 
         if self.refresh_timer is not None:
@@ -295,6 +309,7 @@ class ShannonEntropyApp(App[None]):
             analyzer_output.update(self.last_analyzer_text + "\n\nCapture stopped by user.")
             trends_output.update(self.last_trends_text + "\n\nCapture stopped by user.")
             packet_output.update(self.last_packet_text + "\n\nCapture stopped by user.")
+            investigate_output.update(self.last_investigate_text + "\n\nCapture stopped by user.")
         else:
             status.update("Status: Idle")
 
@@ -384,6 +399,7 @@ class ShannonEntropyApp(App[None]):
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
         packet_output = self.query_one("#packet_output", Static)
+        investigate_output = self.query_one("#investigate_output", Static)
         status = self.query_one("#status", Label)
 
         with self.capture_lock:
@@ -399,13 +415,16 @@ class ShannonEntropyApp(App[None]):
             )
             trends_text = "No trend data yet. Capture is active but no packets have been observed."
             packet_text = "No packet analysis yet. Capture is active but no packets have been observed."
+            investigate_text = "No investigation data yet. Capture is active but no packets have been observed."
             self.last_analyzer_text = analyzer_text
             self.last_trends_text = trends_text
             self.last_packet_text = packet_text
+            self.last_investigate_text = investigate_text
             analyzer_output.update(analyzer_text)
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
             trends_output.update(trends_text)
             packet_output.update(packet_text)
+            investigate_output.update(investigate_text)
             if self.is_listening:
                 status.update("Status: Listening...")
             return
@@ -420,6 +439,13 @@ class ShannonEntropyApp(App[None]):
         total_packets = len(symbols)
         new_packets = max(0, total_packets - self.last_snapshot_packet_count)
         self.last_snapshot_packet_count = total_packets
+        packet_rate = total_packets / elapsed if elapsed > 0 else 0.0
+        shift = detect_shift(
+            history=self.refresh_history,
+            current_shannon_bits=entropy_result.entropy_bits,
+            current_packet_rate=packet_rate,
+            current_dominant_share=success_probability,
+        )
 
         self.refresh_history.append(
             RefreshSnapshot(
@@ -431,6 +457,13 @@ class ShannonEntropyApp(App[None]):
                 success_probability=success_probability,
                 binary_entropy_bits=binary_entropy_bits,
                 shannon_entropy_bits=entropy_result.entropy_bits,
+                packet_rate=packet_rate,
+                baseline_shannon_bits=shift.baseline_shannon_bits,
+                baseline_packet_rate=shift.baseline_packet_rate,
+                dominant_share_delta=shift.dominant_share_delta,
+                shift_score=shift.score,
+                alert_level=shift.level,
+                alert_reasons=shift.reasons,
             )
         )
 
@@ -453,14 +486,17 @@ class ShannonEntropyApp(App[None]):
         )
 
         packet_text = format_packet_analysis(symbols, elapsed)
+        investigate_text = format_investigation_report(self.refresh_history)
 
         self.last_analyzer_text = analyzer_text
         self.last_trends_text = trends_text
         self.last_packet_text = packet_text
+        self.last_investigate_text = investigate_text
         analyzer_output.update(analyzer_text)
         trends_metrics.update(format_trends_metrics(self.refresh_history))
         trends_output.update(trends_text)
         packet_output.update(packet_text)
+        investigate_output.update(investigate_text)
 
         if self.is_listening:
             status.update("Status: Listening...")

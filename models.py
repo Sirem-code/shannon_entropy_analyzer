@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -23,3 +23,10 @@ class RefreshSnapshot:
     success_probability: float
     binary_entropy_bits: float
     shannon_entropy_bits: float
+    packet_rate: float = 0.0
+    baseline_shannon_bits: float = 0.0
+    baseline_packet_rate: float = 0.0
+    dominant_share_delta: float = 0.0
+    shift_score: float = 0.0
+    alert_level: str = "NONE"
+    alert_reasons: list[str] = field(default_factory=list)
