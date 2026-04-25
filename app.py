@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, VerticalScroll
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch, Select
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
@@ -242,6 +242,10 @@ class ShannonEntropyApp(App[None]):
     #interval_mode {
         margin-right: 2;
     }
+
+    .hidden {
+        display: none;
+    }
     """
 
     def __init__(self) -> None:
@@ -284,8 +288,13 @@ class ShannonEntropyApp(App[None]):
                         with Horizontal(classes="config-row"):
                             yield Label("Interval Mode:", classes="config-label")
                             yield Switch(id="interval_mode", value=False)
-                            yield Label("Duration (s):", classes="config-label")
-                            yield Input(value="5", placeholder="Secs", id="duration")
+                            yield Label("Speed:", id="duration_label", classes="config-label hidden")
+                            yield Select(
+                                [("Slow (10s)", 10.0), ("Mid (5s)", 5.0), ("Fast (2s)", 2.0)],
+                                value=5.0,
+                                id="duration_select",
+                                classes="hidden"
+                            )
 
                         with Horizontal(id="controls"):
                             yield Button("Start Listening", variant="primary", id="start_capture")
@@ -386,6 +395,12 @@ class ShannonEntropyApp(App[None]):
     def action_show_about(self) -> None:
         self.query_one(TabbedContent).active = "about"
 
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        if event.switch.id == "interval_mode":
+            is_active = event.value
+            self.query_one("#duration_label").set_class(not is_active, "hidden")
+            self.query_one("#duration_select").set_class(not is_active, "hidden")
+
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)
 
@@ -407,15 +422,11 @@ class ShannonEntropyApp(App[None]):
 
         try:
             filter_input = self.query_one("#filter", Input).value
-            duration_input = self.query_one("#duration", Input).value
             interval_mode = self.query_one("#interval_mode", Switch).value
             
             if interval_mode:
-                try:
-                    duration_seconds = float(duration_input)
-                    if duration_seconds <= 0: duration_seconds = 5.0
-                except ValueError:
-                    duration_seconds = 5.0
+                duration_select = self.query_one("#duration_select", Select)
+                duration_seconds = float(duration_select.value) if duration_select.value is not Select.BLANK else 5.0
             else:
                 # "Live" mode: High-frequency refresh
                 duration_seconds = 0.2
