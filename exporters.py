@@ -1,4 +1,59 @@
 from __future__ import annotations
+"""
+# Exporters: Data Persistence and Post-Analysis
+
+This module is the **persistence layer** of the Shannon Entropy Analyzer. It
+saves captured network analysis data to disk in formats that can be consumed
+by external tools for further analysis, visualization, and reporting.
+
+## Why Export Data?
+
+The TUI provides real-time visualization, but for serious analysis you often need
+to work with the data *after* the capture session ends. Common workflows include:
+
+- **Statistical analysis** in Python (pandas), R, or Excel using CSV exports
+- **Publication-quality plots** in MATLAB or GNU Octave using `.m` script exports
+- **Incident response** documentation: saved CSV files serve as evidence logs.
+- **Longitudinal studies**: compare entropy baselines across different days or weeks.
+
+## Supported Export Formats
+
+### CSV (Comma-Separated Values)
+The `export_refresh_history_csv()` function creates a standard CSV file with
+one row per refresh tick. All numeric metrics (entropy, packet rates, shift
+scores) are included alongside categorical data (dominant symbol, alert level).
+
+**Output columns:**
+`tick`, `elapsed_seconds`, `total_packets`, `new_packets`, `dominant_symbol`,
+`success_probability`, `binary_entropy_bits`, `shannon_entropy_bits`,
+`packet_rate`, `baseline_shannon_bits`, `baseline_packet_rate`,
+`dominant_share_delta`, `shift_score`, `alert_level`, `alert_reasons`
+
+**Usage with pandas:**
+```python
+import pandas as pd
+df = pd.read_csv("refresh_history_20260425_120000.csv")
+df.plot(x="elapsed_seconds", y="shannon_entropy_bits")
+```
+
+### MATLAB/Octave Script (.m)
+The `export_refresh_history_matlab_m()` function generates an executable `.m`
+script that, when run in MATLAB or Octave, will:
+
+1. Load all numeric data into a matrix called `refresh_history`
+2. Extract convenience column vectors (e.g., `tick`, `shannon_entropy_bits`)
+3. Store alert metadata in cell arrays
+4. Auto-generate a 3-panel subplot figure showing:
+   - Shannon Entropy over time
+   - Binary Entropy and success probability
+   - Packet rate vs. baseline median
+
+**Usage:** Simply open the file in MATLAB/Octave and press Run (F5).
+
+## File Naming Convention
+All exported files are timestamped with the format `refresh_history_YYYYMMDD_HHMMSS`
+to prevent overwriting previous exports and to provide a clear audit trail.
+"""
 
 import csv
 from datetime import datetime
@@ -12,6 +67,16 @@ def _timestamp() -> str:
 
 
 def export_refresh_history_csv(history: list[RefreshSnapshot], output_dir: str = ".") -> Path:
+    """
+    Exports the recorded network snapshot history to a CSV file.
+    
+    Args:
+        history: A list of RefreshSnapshot objects containing the metrics over time.
+        output_dir: The directory path where the CSV file should be created.
+        
+    Returns:
+        The exact Path object pointing to the newly created CSV file.
+    """
     output_dir_path = Path(output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
     path = output_dir_path / f"refresh_history_{_timestamp()}.csv"
@@ -60,6 +125,18 @@ def export_refresh_history_csv(history: list[RefreshSnapshot], output_dir: str =
 
 
 def export_refresh_history_matlab_m(history: list[RefreshSnapshot], output_dir: str = ".") -> Path:
+    """
+    Exports the recorded network snapshot history to an executable MATLAB/Octave script (.m).
+    Running the generated script in MATLAB will automatically load the data into variables
+    and generate three subplots showing Shannon Entropy, Binary Entropy, and Packet Rates.
+    
+    Args:
+        history: A list of RefreshSnapshot objects containing the metrics over time.
+        output_dir: The directory path where the MATLAB file should be created.
+        
+    Returns:
+        The exact Path object pointing to the newly created .m script.
+    """
     output_dir_path = Path(output_dir)
     output_dir_path.mkdir(parents=True, exist_ok=True)
     path = output_dir_path / f"refresh_history_{_timestamp()}.m"

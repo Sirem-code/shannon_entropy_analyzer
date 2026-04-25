@@ -1,4 +1,71 @@
 from __future__ import annotations
+"""
+# Formatters: Display and Presentation Layer
+
+This module is the **presentation layer** of the Shannon Entropy Analyzer. It
+takes the raw data structures from `models.py` and transforms them into
+human-readable text blocks, ASCII charts, and formatted tables that the TUI
+can display.
+
+## Why Separate Formatting from Logic?
+
+This module demonstrates an important software design principle:
+**Separation of Concerns**. The analysis engine (`analysis.py`) computes the
+math; the data models (`models.py`) hold the results; and this module handles
+*how those results look* when displayed to a user.
+
+This separation means:
+- You can change the display format without touching the math
+- You can add new export formats (JSON, HTML) without altering the TUI
+- Testing is simplified because you can test calculations and display independently.
+
+## Functions Overview
+
+### Entropy Display
+| Function                    | What It Renders                                       |
+|-----------------------------|-------------------------------------------------------|
+| `format_entropy_summary()`  | Quick H(X) + normalized entropy one-liner             |
+| `format_entropy_report()`   | Full breakdown with all symbol probabilities          |
+
+### Live Capture Display
+| Function                    | What It Renders                                       |
+|-----------------------------|-------------------------------------------------------|
+| `format_capture_report()`   | Interface name, elapsed time, packet count            |
+| `format_packet_analysis()`  | Protocol distribution table with concentration index  |
+| `format_bernoulli_report()` | Running success-rate sparkline chart                  |
+
+### Timeline Charts
+| Function                              | What It Renders                              |
+|---------------------------------------|----------------------------------------------|
+| `format_shannon_entropy_timeline()`   | H(X) over refresh ticks (Braille sparkline)  |
+| `format_binary_entropy_timeline()`    | Hb(p) over time with networking context      |
+| `format_trends_metrics()`             | Key metrics summary bar                      |
+
+### Investigation & Alerts
+| Function                       | What It Renders                                     |
+|--------------------------------|-----------------------------------------------------|
+| `format_investigation_report()`| Current alert level, baseline comparison, triggers  |
+| `format_warning_queue()`       | Scrollable table of WARNING/CRITICAL events         |
+
+### History & Metadata
+| Function                    | What It Renders                                       |
+|-----------------------------|-------------------------------------------------------|
+| `format_refresh_history()`  | Tabular refresh-by-refresh history                    |
+| `about_text()`              | Application credits and feature summary               |
+
+## The Concentration Index
+
+The `format_packet_analysis()` function computes a **Herfindahl-Hirschman
+Index (HHI)**, which is a measure of market concentration borrowed from economics.
+In our context:
+
+    Concentration = Σ (shareᵢ)²
+    Diversity = 1 − Concentration
+
+- **Concentration near 1.0** → one protocol dominates entirely
+- **Concentration near 1/n** → traffic is evenly distributed
+- **Diversity** is simply the complement, making it more intuitive to read
+"""
 
 from collections import Counter
 
@@ -7,6 +74,15 @@ from models import EntropyResult, RefreshSnapshot, WarningEvent
 
 
 def format_entropy_summary(result: EntropyResult) -> str:
+    """
+    Formats a concise summary of the entropy calculation.
+    
+    Args:
+        result: The EntropyResult object.
+        
+    Returns:
+        A multiline string displaying the raw and normalized Shannon entropy.
+    """
     return "\n".join(
         [
             "Entropy Result",
@@ -18,6 +94,15 @@ def format_entropy_summary(result: EntropyResult) -> str:
 
 
 def format_entropy_report(result: EntropyResult) -> str:
+    """
+    Formats a detailed report of the entropy calculation, including symbol probabilities.
+    
+    Args:
+        result: The EntropyResult object.
+        
+    Returns:
+        A multiline string detailing the breakdown of all seen protocols and their probabilities.
+    """
     lines = [
         "Shannon Entropy Report",
         "----------------------",
@@ -42,6 +127,18 @@ def format_capture_report(
     refresh_seconds: float,
     packet_count: int,
 ) -> str:
+    """
+    Formats the status report for the active packet capture session.
+    
+    Args:
+        interface: The name of the network interface being sniffed.
+        elapsed_seconds: Total time the capture has been running.
+        refresh_seconds: The duration of each refresh interval.
+        packet_count: The total number of packets captured so far.
+        
+    Returns:
+        A multiline string detailing the capture session status.
+    """
     return "\n".join(
         [
             "Capture Session",
@@ -55,6 +152,16 @@ def format_capture_report(
 
 
 def format_bernoulli_report(sequence: list[int], success_symbol: str) -> str:
+    """
+    Formats an ASCII sparkline chart showing the running success rate of the dominant protocol.
+    
+    Args:
+        sequence: A binary list (1s and 0s) representing the success of the dominant protocol over time.
+        success_symbol: The name of the dominant protocol (e.g., 'TCP').
+        
+    Returns:
+        A multiline string with an ASCII plot of the success rate.
+    """
     if not sequence:
         return "Bernoulli Process\n-----------------\nNo Bernoulli sequence provided."
 

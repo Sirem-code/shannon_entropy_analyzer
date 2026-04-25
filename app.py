@@ -1,4 +1,75 @@
 from __future__ import annotations
+"""
+# Application: Terminal User Interface and Orchestration
+
+This module is the **orchestration layer** that ties all other modules together
+into a live, interactive terminal application. It is built with
+[Textual](https://textual.textualize.io/), a modern Python framework for
+building rich terminal user interfaces.
+
+## Architecture: How the TUI Works
+
+### The Textual Framework
+Textual provides a widget-based UI system similar to web frameworks. Key concepts:
+
+- **App**: The root application class (`ShannonEntropyApp`) that manages the
+  entire lifecycle
+- **Widgets**: Reusable UI components (buttons, labels, tabs, inputs)
+- **CSS**: Textual uses a CSS-like styling system for layout and theming
+- **Events**: User interactions (clicks, key presses) are handled via event methods
+- **Compose**: The `compose()` method defines the widget tree (similar to HTML)
+
+### Threading Model
+Network packet capture runs in a **background thread** managed by Scapy's
+`AsyncSniffer`. This is critical because:
+
+1. The TUI runs on the **main thread** (Textual's event loop)
+2. Packet capture is **blocking I/O** and must run in a separate thread.
+3. A `threading.Lock` protects the shared `captured_symbols` list from
+   race conditions when both threads access it simultaneously
+4. `call_from_thread()` is used to safely update UI widgets from the
+   capture thread
+
+### The Refresh Cycle
+The app runs on a configurable timer (0.2s to 10s per tick):
+
+```
+Timer fires → Lock packet buffer → Snapshot current symbols
+    → compute_shannon_entropy()    → EntropyResult
+    → binary_entropy()             → Hb(p)
+    → detect_shift()               → ShiftAssessment
+    → Create RefreshSnapshot       → Append to history
+    → Format all panels            → Update UI widgets
+    → (If alert) Create WarningEvent
+```
+
+## UI Structure (Tab Layout)
+
+| Tab               | Purpose                                            |
+|-------------------|----------------------------------------------------|
+| **Analyzer**      | Main control panel: BPF filter, start/stop, live log |
+| **Trends**        | Time-series charts for entropy, binary entropy, rates |
+| **Packet Analysis** | Protocol distribution table and diversity metrics |
+| **Investigate**   | Shift detection alerts and baseline comparisons    |
+| **Warnings**      | Queue of WARNING/CRITICAL events                   |
+| **Alert Rules**   | Configure detection thresholds in real-time        |
+| **About**         | Application credits and feature summary            |
+
+## Custom Widgets
+
+- `ProtocolLog`: A rolling log that shows the last 20 captured protocol symbols
+- `ActivityMeter`: A visual pulse bar that lights up when packets arrive
+
+## Key Bindings
+
+| Shortcut   | Action                  |
+|------------|-------------------------|
+| `Ctrl+Q`   | Quit the application    |
+| `Ctrl+A`   | Toggle capture on/off   |
+| `Ctrl+E`   | Export data as CSV       |
+| `Ctrl+M`   | Export data as MATLAB    |
+| `F1`       | Show the About tab       |
+"""
 
 from pathlib import Path
 from threading import Lock
@@ -370,9 +441,11 @@ class ShannonEntropyApp(App[None]):
         self.total_packets_count = 0
 
     def on_mount(self) -> None:
+        """Hides the warnings tab on application initialization."""
         self.query_one(TabbedContent).hide_tab("warnings")
 
     def compose(self) -> ComposeResult:
+        """Yields the main UI layout widgets."""
         yield Header()
         with Container(id="main"):
             with TabbedContent(initial="analyzer"):
@@ -503,6 +576,7 @@ class ShannonEntropyApp(App[None]):
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handles application button events."""
         if event.button.id == "start_capture":
             if self.is_listening:
                 self.stop_capture(user_requested=True)
@@ -528,6 +602,7 @@ class ShannonEntropyApp(App[None]):
             return
 
     def action_toggle_analyze(self) -> None:
+        """Toggles packet capture session."""
         if self.is_listening:
             self.stop_capture(user_requested=True)
         else:
@@ -535,28 +610,39 @@ class ShannonEntropyApp(App[None]):
             self.start_capture()
 
     def action_export_csv(self) -> None:
+        """Triggers CSV export action."""
         self.export_history_csv()
 
     def action_export_matlab(self) -> None:
+        """Triggers MATLAB export action."""
         self.export_history_matlab()
 
     def action_show_about(self) -> None:
+        """Navigates to the About tab."""
         self.query_one(TabbedContent).active = "about"
 
     def on_switch_changed(self, event: Switch.Changed) -> None:
+        """Handles configuration switch interactions."""
         if event.switch.id == "interval_mode":
             is_active = event.value
             self.query_one("#duration_label").set_class(not is_active, "hidden")
             self.query_one("#duration_select").set_class(not is_active, "hidden")
 
     def on_select_changed(self, event: Select.Changed) -> None:
+        """Updates the BPF filter input based on preset selection."""
         if event.select.id == "filter_preset" and event.value is not Select.BLANK:
             self.query_one("#filter", Input).value = str(event.value)
 
     def on_unmount(self) -> None:
+        """Cleans up resources upon app destruction."""
         self.stop_capture(user_requested=False)
 
     def start_capture(self) -> None:
+        """
+        Initializes and starts the Scapy AsyncSniffer in a background thread.
+        Prepares the internal state, sets up the update timer, and begins polling
+        the active interface for packets matching the user-defined BPF filter.
+        """
         analyzer_output = self.query_one("#analyzer_output", Static)
         status = self.query_one("#status", Label)
 
@@ -804,6 +890,12 @@ class ShannonEntropyApp(App[None]):
             return default
 
     def refresh_live_report(self) -> None:
+        """
+        The core analysis loop. Triggered periodically by the update_timer.
+        It pulls captured packets, calculates current Shannon/Binary entropy,
+        invokes the shift_detection algorithms to find anomalies, appends the
+        results to the historical snapshot list, and updates all visual UI components.
+        """
         trends_metrics = self.query_one("#trends_metrics", Static)
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)

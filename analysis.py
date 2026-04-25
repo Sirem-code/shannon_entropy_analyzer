@@ -1,4 +1,64 @@
 from __future__ import annotations
+"""
+# Analysis Engine: Shannon Entropy and Visualization
+
+This is the **mathematical heart** of the Shannon Entropy Analyzer. It contains
+the core information-theory functions that transform a stream of protocol symbols
+into quantified metrics about network diversity.
+
+## Key Concepts for Students
+
+### Shannon Entropy: H(X)
+Given a discrete random variable X with possible values {x₁, x₂, ..., xₙ},
+Shannon Entropy is:
+
+    H(X) = −Σ p(xᵢ) · log₂(p(xᵢ))
+
+- **Unit**: bits (because we use log base 2)
+- **Minimum**: 0 bits (only one symbol exists, no uncertainty)
+- **Maximum**: log₂(n) bits (all n symbols are equally likely)
+
+### Binary Entropy: Hb(p)
+A special case with only two outcomes (success/failure):
+
+    Hb(p) = −p·log₂(p) − (1−p)·log₂(1−p)
+
+This is useful for tracking how dominant the most common protocol is. It peaks
+at exactly 1.0 bit when p = 0.5 (perfectly balanced).
+
+### Bernoulli Process
+We model the dominant protocol as a Bernoulli trial: each packet is either
+the dominant protocol (1) or something else (0). The running success rate
+shows how this probability evolves over time.
+
+## Functions in This Module
+
+| Function                    | Purpose                                              |
+|-----------------------------|------------------------------------------------------|
+| `compute_shannon_entropy()` | Main H(X) calculation from a symbol sequence         |
+| `binary_entropy()`          | Hb(p) for a single probability value                 |
+| `dominant_symbol()`         | Finds the most frequent symbol                       |
+| `to_bernoulli_from_symbol_stream()` | Converts symbols into 1/0 binary sequence  |
+| `running_success_rate()`    | Computes cumulative p(success) over time             |
+| `braille_sparkline()`       | High-resolution terminal chart using Braille chars   |
+| `downsample()`              | Reduces data resolution to fit chart width           |
+| `ascii_series_plot()`       | Wrapper for generating Braille-based time series     |
+| `ascii_rate_plot()`         | Convenience plot with 0.0–1.0 Y-axis range           |
+
+## Example: Computing Entropy
+
+```python
+from analysis import compute_shannon_entropy
+
+# A sample of captured protocol symbols
+symbols = ["TCP", "TCP", "UDP", "DNS/UDP", "TCP", "ARP", "TCP"]
+result = compute_shannon_entropy(symbols)
+
+print(f"Entropy: {result.entropy_bits:.4f} bits")
+print(f"Normalized: {result.normalized_entropy:.2%}")
+print(f"Unique symbols: {result.symbol_count}")
+```
+"""
 
 from collections import Counter
 from math import log2
@@ -8,6 +68,17 @@ from models import EntropyResult
 
 
 def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
+    """
+    Computes the Shannon Entropy (H) for a given sequence of symbols.
+    Calculates the distribution of symbols, the raw entropy bits, and 
+    a normalized entropy score relative to the maximum possible entropy.
+    
+    Args:
+        symbols: An iterable of symbol strings (e.g., protocols like 'TCP', 'UDP').
+        
+    Returns:
+        EntropyResult containing the calculated entropy metrics.
+    """
     symbol_list = list(symbols)
     if not symbol_list:
         raise ValueError("No network symbols were provided.")
@@ -38,6 +109,15 @@ def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
 
 
 def dominant_symbol(symbols: list[str]) -> str:
+    """
+    Identifies the most frequently occurring symbol in a sequence.
+    
+    Args:
+        symbols: A list of symbol strings.
+        
+    Returns:
+        The single most frequent symbol.
+    """
     if not symbols:
         raise ValueError("No network symbols were provided.")
     counts = Counter(symbols)
@@ -54,6 +134,15 @@ def to_bernoulli_from_symbol_stream(symbols: list[str], success_symbol: str) -> 
 
 
 def binary_entropy(p_success: float) -> float:
+    """
+    Calculates the binary entropy (Hb) for a given probability of success.
+    
+    Args:
+        p_success: The probability (0.0 to 1.0) of the dominant event occurring.
+        
+    Returns:
+        The binary entropy in bits (peaks at 1.0 when p_success is 0.5).
+    """
     if p_success <= 0.0 or p_success >= 1.0:
         return 0.0
     p_failure = 1.0 - p_success
@@ -86,7 +175,17 @@ def downsample(values: list[float], width: int) -> list[float]:
 
 
 def braille_sparkline(values: list[float], width: int = 60, height: int = 4) -> str:
-    """Generates a high-resolution sparkline using Braille patterns."""
+    """
+    Generates a high-resolution text-based sparkline chart using Braille characters.
+    
+    Args:
+        values: A sequence of float values to plot.
+        width: The maximum character width of the plot.
+        height: The character height of the plot (each character supports 4 vertical dots).
+        
+    Returns:
+        A multiline string containing the Braille sparkline chart and Y-axis labels.
+    """
     if not values:
         return "(no data)"
 
