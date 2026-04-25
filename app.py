@@ -6,8 +6,8 @@ from time import monotonic
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, VerticalScroll, Collapsible
-from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable
+from textual.containers import Container, Horizontal, VerticalScroll
+from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
 from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
