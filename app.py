@@ -108,20 +108,31 @@ class ShannonEntropyApp(App[None]):
         text-style: bold;
     }
 
-    ContentTab {
+    /* Target both Tab and ContentTab for compatibility */
+    Tab, ContentTab {
         color: $primary;
     }
 
-    ContentTab:hover {
+    Tab:hover, ContentTab:hover {
         color: $primary-light;
         background: $surface-lighten-1;
     }
 
-    ContentTab.-active {
-        color: #ffffff;
-        background: $surface;
+    /* The active state often uses --active or -active */
+    Tab.--active, Tab.-active, ContentTab.-active, ContentTab.--active {
+        color: #ffffff !important;
+        background: $surface !important;
         border-bottom: tall $primary;
         text-style: bold;
+    }
+
+    /* Specifically target the Analyzer tab by its generated ID */
+    #--content-tab-analyzer {
+        color: $primary;
+    }
+
+    #--content-tab-analyzer.--active, #--content-tab-analyzer.-active {
+        color: #ffffff !important;
     }
 
     TabbedContent {
