@@ -170,7 +170,7 @@ class ShannonEntropyApp(App[None]):
     #main {
         width: 100%;
         height: 100%;
-        padding: 0 1;
+        padding: 0;
     }
 
     Header {
@@ -180,10 +180,13 @@ class ShannonEntropyApp(App[None]):
         border-bottom: solid $border;
     }
 
+    Footer {
+        background: $surface;
+    }
+
     Tabs {
         background: $surface;
         border-bottom: solid $border;
-        margin-bottom: 1;
         height: 3;
     }
 
@@ -203,50 +206,61 @@ class ShannonEntropyApp(App[None]):
         text-style: bold;
     }
 
-    Underline > .underline--bar {
-        background: $primary;
-    }
-
-
-
     TabPane {
-        padding: 1 1;
+        padding: 0;
     }
 
-    .block-title {
+    .dashboard-container {
+        layout: horizontal;
+        height: 100%;
+    }
+
+    .sidebar {
+        width: 32;
+        height: 100%;
+        background: $surface;
+        border-right: solid $border;
+        padding: 1;
+    }
+
+    .main-panel {
+        width: 1fr;
+        height: 100%;
+        padding: 1;
+    }
+
+    .section-title {
         color: $primary-light;
         text-style: bold;
-        background: $surface-lighten-1;
-        padding: 0 1;
-        margin-bottom: 1;
-        border-left: tall $primary;
+        margin-top: 1;
+        margin-bottom: 0;
     }
 
     .card {
-        background: $surface;
+        background: $background;
         border: solid $border;
+        padding: 0 1;
         margin-bottom: 1;
         height: auto;
     }
 
     .compact-row {
         height: auto;
-        margin-bottom: 0;
+        margin-bottom: 1;
         align: left middle;
-        padding: 0 1;
     }
 
-    .config-label {
-        width: 12;
+    .label-muted {
         color: $text-muted;
+        width: 1fr;
     }
 
     Input {
-        background: $background;
+        background: $surface;
         border: solid $border;
         color: $text;
         height: 3;
-        margin: 0 0 1 0;
+        margin-bottom: 1;
     }
 
     Input:focus {
@@ -254,24 +268,25 @@ class ShannonEntropyApp(App[None]):
     }
 
     Select {
-        background: $background;
+        background: $surface;
         border: solid $border;
         height: 3;
+        margin-bottom: 1;
     }
 
     Button {
+        width: 100%;
         height: 3;
         border: solid $border;
-        text-style: bold;
         background: $surface-lighten-1;
         color: $text;
-        margin-right: 1;
+        margin-bottom: 1;
+        text-style: bold;
     }
 
     Button:hover {
         background: $primary-dark;
         border: solid $primary;
-        color: #fff;
     }
 
     #start_capture.btn-start {
@@ -285,58 +300,50 @@ class ShannonEntropyApp(App[None]):
         border: none;
     }
 
-    #analyzer_dashboard, #trends_dashboard, #packet_dashboard {
-        height: auto;
+    #status {
+        color: $secondary;
+        text-style: italic;
+        margin-top: 1;
     }
 
-    .col-left {
-        width: 60%;
-        margin-right: 1;
-    }
-
-    .col-right {
-        width: 40%;
-    }
-
-    #protocol_log {
-        height: 8;
-        background: $background;
-        border: solid $border;
-        padding: 0 1;
-        color: $primary-light;
-        margin: 0 1 1 1;
+    #packet_counter {
+        color: $success;
+        text-style: bold;
+        margin-bottom: 1;
     }
 
     ActivityMeter {
         width: 100%;
         height: 1;
-        margin: 0 1;
+        margin-bottom: 1;
     }
 
-    .activity-label {
-        color: $text-muted;
-        margin-left: 1;
+    #protocol_log {
+        height: 1fr;
+        background: $background;
+        border: solid $border;
+        padding: 0 1;
+        color: $primary-light;
     }
 
-    #status {
-        color: $secondary;
-        text-style: italic;
-        margin: 1;
+    .scroll-box {
+        height: 1fr;
+        overflow-y: scroll;
     }
 
     #analyzer_output, #trends_output, #packet_output, #investigate_output, #warnings_output {
-        border-top: tall $primary-dark;
         background: $surface;
+        border: solid $border;
         padding: 1;
         margin-top: 1;
-        height: auto;
+        height: 1fr;
     }
 
     #duration_container {
         border: solid $border;
-        background: $background;
+        background: $surface-lighten-1;
         padding: 0 1;
-        margin: 1;
+        margin-bottom: 1;
         height: auto;
     }
 
@@ -344,18 +351,18 @@ class ShannonEntropyApp(App[None]):
         display: none;
     }
 
-    .rule-label { width: 30; color: $text-muted; }
+    .rule-label { width: 1fr; color: $text-muted; }
     .rule-input { width: 12; }
 
     .tips-collapsible {
-        margin: 1 0;
+        margin-top: 1;
         background: $surface;
         border: solid $border;
     }
 
     DataTable {
         height: auto;
-        max-height: 20;
+        max-height: 15;
         background: $background;
         border: solid $border;
     }
@@ -401,130 +408,126 @@ class ShannonEntropyApp(App[None]):
         with Container(id="main"):
             with TabbedContent(initial="analyzer"):
                 with TabPane("Analyzer", id="analyzer"):
-                    with Vertical():
-                        with Horizontal(id="analyzer_dashboard"):
-                            with Vertical(classes="col-left card"):
-                                yield Label("Configuration", classes="block-title")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Filter:", classes="config-label")
-                                    yield Input(value="", placeholder="e.g. tcp, udp", id="filter")
-                                
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Preset:", classes="config-label")
-                                    yield Select(
-                                        [
-                                            ("All Traffic", ""),
-                                            ("TCP Only", "tcp"),
-                                            ("UDP Only", "udp"),
-                                            ("Web Traffic", "tcp port 80 or tcp port 443"),
-                                            ("DNS Only", "port 53"),
-                                            ("ICMP Only", "icmp"),
-                                        ],
-                                        id="filter_preset",
-                                        prompt="Select Preset..."
-                                    )
-                                
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Interval:", classes="config-label")
-                                    yield Switch(id="interval_mode", value=False)
-                                
-                                with Vertical(id="duration_container", classes="hidden"):
-                                    yield Label("Capture Speed:", classes="config-label")
-                                    with RadioSet(id="duration_select"):
-                                        yield RadioButton("Slow (10s)", id="speed_10")
-                                        yield RadioButton("Mid (5s)", id="speed_5", value=True)
-                                        yield RadioButton("Fast (2s)", id="speed_2")
-
-                                with Horizontal(id="controls"):
-                                    yield Button("Start Listening", variant="primary", id="start_capture", classes="btn-start")
-                                
-                                yield Label("Status: Idle", id="status")
-
-                            with Vertical(classes="col-right card"):
-                                yield Label("Real-time Activity", classes="block-title")
-                                yield ActivityMeter(id="activity_meter")
-                                yield Label("Counter: [b]0[/b] packets", id="packet_counter")
-                                yield Label("Recent Symbols", classes="activity-label")
-                                yield ProtocolLog(id="protocol_log")
-
-                        yield Static(
-                            "Press [b]Start Listening[/b] to begin live capture and periodic analysis.",
-                            id="analyzer_output",
-                        )
-
-                with TabPane("Trends", id="trends"):
-                    with VerticalScroll():
-                        with Horizontal(id="trends_dashboard"):
-                            with Vertical(classes="col-left card"):
-                                yield Label("Key Metrics Summary", classes="block-title")
-                                yield Static("Capture not started.", id="trends_metrics")
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Control Panel", classes="section-title")
+                            yield Button("Start Listening", variant="primary", id="start_capture", classes="btn-start")
+                            yield Label("Status: Idle", id="status")
                             
-                            with Vertical(classes="col-right card"):
-                                yield Label("Export & Controls", classes="block-title")
-                                with Horizontal():
-                                    yield Button("CSV", id="export_csv")
-                                    yield Button("MATLAB", id="export_matlab")
-                                yield Button("Clear History", id="clear_charts")
-                        
-                        yield Static("Charts will appear here.", id="trends_output")
-                        
-                        with Collapsible(title="Data Table View", collapsed=True):
-                            yield DataTable(id="history_table")
-                        
-                        with Collapsible(title="💡 Interpretation Guide", collapsed=True, classes="tips-collapsible"):
+                            yield Label("Configuration", classes="section-title")
+                            yield Label("BPF Filter:", classes="label-muted")
+                            yield Input(value="", placeholder="e.g. tcp, udp", id="filter")
+                            
+                            yield Label("Quick Presets:", classes="label-muted")
+                            yield Select(
+                                [
+                                    ("All Traffic", ""),
+                                    ("TCP Only", "tcp"),
+                                    ("UDP Only", "udp"),
+                                    ("Web (80/443)", "tcp port 80 or tcp port 443"),
+                                    ("DNS (53)", "port 53"),
+                                ],
+                                id="filter_preset",
+                                prompt="Select..."
+                            )
+                            
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Interval Mode", classes="label-muted")
+                                yield Switch(id="interval_mode", value=False)
+                            
+                            with Vertical(id="duration_container", classes="hidden"):
+                                yield Label("Capture Speed:", classes="label-muted")
+                                with RadioSet(id="duration_select"):
+                                    yield RadioButton("Slow (10s)", id="speed_10")
+                                    yield RadioButton("Mid (5s)", id="speed_5", value=True)
+                                    yield RadioButton("Fast (2s)", id="speed_2")
+
+                            yield Label("Statistics", classes="section-title")
+                            yield ActivityMeter(id="activity_meter")
+                            yield Label("Packets: [b]0[/b]", id="packet_counter")
+
+                        with Vertical(classes="main-panel"):
+                            yield Label("Live Protocol Stream", classes="section-title")
+                            yield ProtocolLog(id="protocol_log")
                             yield Static(
-                                "[b]Entropy H(X):[/b] High = Diversified traffic. Low = One protocol dominant (possible flood).\n"
-                                "[b]Binary Hb(p):[/b] Concentration of the top protocol vs others.\n"
-                                "[b]Success Rate:[/b] Percentage share of the most frequent protocol."
+                                "Waiting for capture...",
+                                id="analyzer_output",
                             )
 
-                with TabPane("Packet Analysis", id="packet_analysis"):
-                    with VerticalScroll():
+                with TabPane("Trends", id="trends"):
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Summary Stats", classes="section-title")
+                            yield Static("Capture idle.", id="trends_metrics")
+                            
+                            yield Label("Actions", classes="section-title")
+                            yield Button("Export CSV", id="export_csv")
+                            yield Button("Export MATLAB", id="export_matlab")
+                            yield Button("Clear History", id="clear_charts")
+
+                        with Vertical(classes="main-panel scroll-box"):
+                            yield Label("Historical Trends", classes="section-title")
+                            yield Static("Visual charts appear here.", id="trends_output")
+                            with Collapsible(title="Data Table View", collapsed=True):
+                                yield DataTable(id="history_table")
+                            with Collapsible(title="💡 Interpretation Tips", collapsed=True, classes="tips-collapsible"):
+                                yield Static(
+                                    "[b]Entropy H(X):[/b] Diversity score. High = mixed traffic, Low = flood/monoculture.\n"
+                                    "[b]Binary Hb(p):[/b] Success-rate concentration metric.\n"
+                                    "[b]Success Rate:[/b] Percentage of the most frequent protocol."
+                                )
+
+                with TabPane("Analysis", id="packet_analysis"):
+                    with VerticalScroll(classes="main-panel"):
+                        yield Label("Protocol Distribution", classes="section-title")
                         yield Static(
-                            "Protocol distribution and mixing metrics will appear here after capture starts.",
+                            "Waiting for packets...",
                             id="packet_output",
                         )
 
                 with TabPane("Investigate", id="investigate"):
-                    with VerticalScroll():
-                        with Horizontal(classes="card"):
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Alert Center", classes="section-title")
                             yield Button("View Warning Log", id="see_warnings")
-                        yield Static(
-                            "Shift detection alerts and baseline comparisons appear here.",
-                            id="investigate_output",
-                        )
+                        with Vertical(classes="main-panel"):
+                            yield Label("Anomaly Detection", classes="section-title")
+                            yield Static("System normal.", id="investigate_output")
 
                 with TabPane("Warnings", id="warnings"):
-                    with VerticalScroll():
-                        yield Button("Back to Investigation", id="back_to_investigate")
-                        yield Static("No warnings reported.", id="warnings_output")
+                    with VerticalScroll(classes="main-panel"):
+                        yield Button("← Back to Investigation", id="back_to_investigate")
+                        yield Label("Event Queue", classes="section-title")
+                        yield Static("No warnings.", id="warnings_output")
 
-                with TabPane("Alert Rules", id="alert_rules"):
-                    with VerticalScroll():
-                        with Horizontal(id="rules_dashboard"):
-                            with Vertical(classes="col-left card"):
-                                yield Label("Detection Thresholds", classes="block-title")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Entropy Drop:", classes="rule-label")
-                                    yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input", tooltip="Alerts if entropy drops abruptly by this amount.")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Dominant Delta:", classes="rule-label")
-                                    yield Input(value="0.15", id="rule_dominant_share", classes="rule-input", tooltip="Alerts if a single protocol's share jumps by this percentage.")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Rate Multiplier:", classes="rule-label")
-                                    yield Input(value="2.0", id="rule_packet_rate", classes="rule-input", tooltip="Alerts if packet rate exceeds baseline by this multiplier.")
+                with TabPane("Rules", id="alert_rules"):
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Configuration", classes="section-title")
+                            yield Label("Thresholds determine how sensitive the shift detection is to entropy changes.", classes="label-muted")
                             
-                            with Vertical(classes="col-right card"):
-                                yield Label("Heuristics", classes="block-title")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Flood Rate:", classes="rule-label")
-                                    yield Input(value="3.0", id="rule_flood_rate", classes="rule-input", tooltip="Multiplier to trigger a 'Flood' assessment.")
-                                with Horizontal(classes="compact-row"):
-                                    yield Label("Scan Entropy:", classes="rule-label")
-                                    yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input", tooltip="Min entropy required to confirm a port scan.")
+                        with Vertical(classes="main-panel scroll-box"):
+                            yield Label("Detection Thresholds", classes="section-title")
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Entropy Drop:", classes="rule-label")
+                                yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input", tooltip="Alerts if entropy drops abruptly.")
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Dominant Delta:", classes="rule-label")
+                                yield Input(value="0.15", id="rule_dominant_share", classes="rule-input", tooltip="Alerts if a protocol share jumps.")
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Rate Multiplier:", classes="rule-label")
+                                yield Input(value="2.0", id="rule_packet_rate", classes="rule-input", tooltip="Alerts if rate exceeds baseline.")
+                            
+                            yield Label("Heuristics", classes="section-title")
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Flood Rate:", classes="rule-label")
+                                yield Input(value="3.0", id="rule_flood_rate", classes="rule-input", tooltip="Multiplier for Flood assessment.")
+                            with Horizontal(classes="compact-row"):
+                                yield Label("Scan Entropy:", classes="rule-label")
+                                yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input", tooltip="Min entropy for Scan assessment.")
 
                 with TabPane("About", id="about"):
-                    with VerticalScroll():
+                    with VerticalScroll(classes="main-panel"):
                         yield Static(about_text(), id="about_text")
         yield Footer()
 
