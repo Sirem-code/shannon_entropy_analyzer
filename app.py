@@ -219,7 +219,7 @@ class ShannonEntropyApp(App[None]):
     .config-row {
         height: auto;
         margin-bottom: 1;
-        align: middle left;
+        align: left middle;
     }
 
     .config-label {
