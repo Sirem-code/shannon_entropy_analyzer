@@ -65,6 +65,14 @@ class ActivityMeter(Static):
 
 
 class ShannonEntropyApp(App[None]):
+    """A Shannon Entropy calculator for network traffic."""
+
+    BINDINGS = [
+        ("ctrl+q", "quit", "Quit"),
+        ("ctrl+a", "toggle_analyze", "Analyze"),
+        ("ctrl+e", "export_csv", "Export CSV"),
+        ("f1", "show_about", "About"),
+    ]
     TITLE = "Shannon Entropy Analyzer"
     SUB_TITLE = "Advanced Network Diagnostics"
 
@@ -364,6 +372,19 @@ class ShannonEntropyApp(App[None]):
             tabs = self.query_one(TabbedContent)
             tabs.active = "investigate"
             return
+
+    def action_toggle_analyze(self) -> None:
+        if self.is_listening:
+            self.stop_capture(user_requested=True)
+        else:
+            self.query_one(TabbedContent).active = "analyzer"
+            self.start_capture()
+
+    def action_export_csv(self) -> None:
+        self.export_history_csv()
+
+    def action_show_about(self) -> None:
+        self.query_one(TabbedContent).active = "about"
 
     def on_unmount(self) -> None:
         self.stop_capture(user_requested=False)

@@ -302,7 +302,3 @@ def about_text() -> str:
             "- Export: Save analysis history to CSV or MATLAB formats.",
         ]
     )
-            "",
-            "[link=\"https://en.wikipedia.org/wiki/Entropy_(information_theory)\"]Shannon entropy on Wikipedia[/link]",
-        ]
-    )
