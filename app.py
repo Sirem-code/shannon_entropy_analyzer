@@ -260,6 +260,9 @@ class ShannonEntropyApp(App[None]):
         self.consecutive_warning_ticks = 0
         self.total_packets_count = 0
 
+    def on_mount(self) -> None:
+        self.query_one(TabbedContent).hide_tab("warnings")
+
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="main"):
