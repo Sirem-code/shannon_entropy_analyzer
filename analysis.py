@@ -85,41 +85,62 @@ def downsample(values: list[float], width: int) -> list[float]:
     return sampled
 
 
+def braille_sparkline(values: list[float], width: int = 60, height: int = 4) -> str:
+    """Generates a high-resolution sparkline using Braille patterns."""
+    if not values:
+        return "(no data)"
+
+    sampled = downsample(values, width)
+    # Braille cells are 2x4 dots. Vertical resolution = height * 4.
+    v_res = height * 4
+    local_min = min(sampled)
+    local_max = max(sampled)
+    if local_max <= local_min:
+        local_max = local_min + 1.0
+    v_range = local_max - local_min
+
+    # Create a grid of bits (dots)
+    dots = [[False for _ in range(len(sampled))] for _ in range(v_res)]
+    for x, val in enumerate(sampled):
+        norm = (val - local_min) / v_range
+        y = int(round((1 - norm) * (v_res - 1)))
+        y = max(0, min(v_res - 1, y))
+        dots[y][x] = True
+
+    # Convert dots to Braille characters
+    lines = []
+    for row in range(0, v_res, 4):
+        line_chars = []
+        for col in range(len(sampled)):
+            # Braille dot mapping (standard)
+            # 1 4
+            # 2 5
+            # 3 6
+            # 7 8
+            code = 0x2800
+            if dots[row][col]: code |= 0x01
+            if dots[row+1][col] if row+1 < v_res else False: code |= 0x02
+            if dots[row+2][col] if row+2 < v_res else False: code |= 0x04
+            if dots[row+3][col] if row+3 < v_res else False: code |= 0x40
+            # We only use one column of dots per Braille char for simple width mapping
+            line_chars.append(chr(code))
+        
+        label_val = local_max - ((row / v_res) * v_range)
+        lines.append(f"{label_val:>4.2f} | {''.join(line_chars)}")
+
+    lines.append("     + " + "-" * len(sampled))
+    return "\n".join(lines)
+
+
 def ascii_series_plot(
     values: list[float],
     width: int = 60,
-    height: int = 10,
+    height: int = 2, # Braille height is 4 dots per char, so height=2 is 8 vertical dots
     y_min: float | None = None,
     y_max: float | None = None,
 ) -> str:
-    if not values:
-        return "(no data to plot)"
-
-    sampled = downsample(values, width)
-    plot_width = len(sampled)
-    grid = [[" " for _ in range(plot_width)] for _ in range(height)]
-
-    local_min = min(sampled) if y_min is None else y_min
-    local_max = max(sampled) if y_max is None else y_max
-    if local_max <= local_min:
-        local_max = local_min + 1.0
-    value_range = local_max - local_min
-
-    for x, value in enumerate(sampled):
-        normalized = (value - local_min) / value_range
-        normalized = max(0.0, min(1.0, normalized))
-        y = int(round((1 - normalized) * (height - 1)))
-        y = max(0, min(height - 1, y))
-        grid[y][x] = "*"
-
-    lines: list[str] = []
-    for row in range(height):
-        label_value = local_max - ((row / (height - 1)) * value_range) if height > 1 else local_max
-        lines.append(f"{label_value:>4.2f} | {''.join(grid[row])}")
-
-    lines.append("     + " + "-" * plot_width)
-    lines.append("       tick index ->")
-    return "\n".join(lines)
+    # We'll use the braille_sparkline for better resolution
+    return braille_sparkline(values, width=width, height=height)
 
 
 def ascii_rate_plot(values: list[float], width: int = 60, height: int = 10) -> str:
