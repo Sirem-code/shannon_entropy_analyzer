@@ -81,6 +81,26 @@ def detect_shift(
             f"Packet rate spike: {current_packet_rate:.2f}/s vs baseline median {median_packet_rate:.2f}/s"
         )
 
+    # Compound Heuristic Alerts
+    packet_rate_ratio = current_packet_rate / median_packet_rate if median_packet_rate > 0 else 1.0
+    is_high_packet_rate = packet_rate_ratio > 3.0
+
+    if is_high_packet_rate and current_shannon_bits < 1.0:
+        score += 5.0
+        reasons.append(
+            f"[!] HEURISTIC ALERT: Possible DoS/Flood Attack! High packet rate ({current_packet_rate:.1f}/s) with extremely low entropy ({current_shannon_bits:.2f} bits)."
+        )
+    elif is_high_packet_rate and current_shannon_bits > 3.0 and shannon_delta > 0.5:
+        score += 5.0
+        reasons.append(
+            f"[!] HEURISTIC ALERT: Possible Port Scan/Reconnaissance! High packet rate ({current_packet_rate:.1f}/s) with high/spiking entropy ({current_shannon_bits:.2f} bits)."
+        )
+    elif shannon_delta > 1.5 and current_shannon_bits > 4.0 and not is_high_packet_rate:
+        score += 4.0
+        reasons.append(
+            f"[!] HEURISTIC ALERT: Possible Data Exfiltration/Tunneling! Sudden extreme entropy spike ({current_shannon_bits:.2f} bits) indicating encrypted or random traffic."
+        )
+
     if score >= 4.0:
         level = "CRITICAL"
     elif score >= 2.0:
