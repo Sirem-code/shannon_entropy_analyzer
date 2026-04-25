@@ -136,7 +136,7 @@ def export_refresh_history_matlab_m(history: list[RefreshSnapshot], output_dir: 
             "stairs(tick, success_probability, '--', 'LineWidth', 1.2);",
             "grid on;",
             "ylabel('Hb(p) / p(success)');",
-            "title('Bernoulli Chart: Binary Entropy and Success Probability');",
+            "title('Running success-rate plot');",
             "legend('Hb(p)', 'p(success)', 'Location', 'best');",
             "",
             "subplot(3,1,3);",
