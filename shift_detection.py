@@ -34,6 +34,12 @@ def detect_shift(
     current_dominant_share: float,
     window_size: int = 8,
     min_baseline_points: int = 5,
+    shannon_drop_tolerance: float = 0.7,
+    dominant_share_tolerance: float = 0.15,
+    packet_rate_multiplier: float = 2.0,
+    flood_packet_rate_multiplier: float = 3.0,
+    flood_entropy_ceiling: float = 1.0,
+    scan_entropy_floor: float = 3.0,
 ) -> ShiftAssessment:
     baseline = history[-window_size:] if len(history) > window_size else history
     if len(baseline) < min_baseline_points:
@@ -64,18 +70,18 @@ def detect_shift(
         reasons.append(
             f"Shannon entropy shift: {shannon_delta:+.3f} bits vs baseline mean {mean_shannon:.3f}"
         )
-    elif abs(shannon_delta) > 0.7:
+    elif abs(shannon_delta) > shannon_drop_tolerance:
         score += 1.0
         reasons.append(f"Entropy moved by {shannon_delta:+.3f} bits from baseline")
 
     dominant_share_delta = current_dominant_share - mean_dominant_share
-    if abs(dominant_share_delta) > 0.15:
+    if abs(dominant_share_delta) > dominant_share_tolerance:
         score += 2.0
         reasons.append(
             f"Dominant share changed by {dominant_share_delta:+.2%} vs baseline {mean_dominant_share:.2%}"
         )
 
-    if median_packet_rate > 0 and current_packet_rate > 2.0 * median_packet_rate:
+    if median_packet_rate > 0 and current_packet_rate > packet_rate_multiplier * median_packet_rate:
         score += 2.0
         reasons.append(
             f"Packet rate spike: {current_packet_rate:.2f}/s vs baseline median {median_packet_rate:.2f}/s"
@@ -83,14 +89,14 @@ def detect_shift(
 
     # Compound Heuristic Alerts
     packet_rate_ratio = current_packet_rate / median_packet_rate if median_packet_rate > 0 else 1.0
-    is_high_packet_rate = packet_rate_ratio > 3.0
+    is_high_packet_rate = packet_rate_ratio > flood_packet_rate_multiplier
 
-    if is_high_packet_rate and current_shannon_bits < 1.0:
+    if is_high_packet_rate and current_shannon_bits < flood_entropy_ceiling:
         score += 5.0
         reasons.append(
             f"[!] HEURISTIC ALERT: Possible DoS/Flood Attack! High packet rate ({current_packet_rate:.1f}/s) with extremely low entropy ({current_shannon_bits:.2f} bits)."
         )
-    elif is_high_packet_rate and current_shannon_bits > 3.0 and shannon_delta > 0.5:
+    elif is_high_packet_rate and current_shannon_bits > scan_entropy_floor and shannon_delta > 0.5:
         score += 5.0
         reasons.append(
             f"[!] HEURISTIC ALERT: Possible Port Scan/Reconnaissance! High packet rate ({current_packet_rate:.1f}/s) with high/spiking entropy ({current_shannon_bits:.2f} bits)."

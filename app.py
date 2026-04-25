@@ -318,6 +318,21 @@ class ShannonEntropyApp(App[None]):
     .hidden {
         display: none;
     }
+
+    .rule-label {
+        width: 28;
+        color: $text-muted;
+    }
+
+    .rule-input {
+        width: 15;
+    }
+
+    .block-title {
+        color: $secondary;
+        text-style: bold;
+        margin: 1 0;
+    }
     """
 
     def __init__(self) -> None:
@@ -434,6 +449,30 @@ class ShannonEntropyApp(App[None]):
                             "WARNING/CRITICAL queue appears here.",
                             id="warnings_output",
                         )
+
+                with TabPane("Alert Rules", id="alert_rules"):
+                    with VerticalScroll(id="rules_scroll"):
+                        yield Label("Base Shift Detection Thresholds", classes="block-title")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Entropy Drop Tolerance:", classes="rule-label")
+                            yield Input(value="0.7", id="rule_shannon_drop", classes="rule-input")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Dominant Share Delta:", classes="rule-label")
+                            yield Input(value="0.15", id="rule_dominant_share", classes="rule-input")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Packet Rate Multiplier:", classes="rule-label")
+                            yield Input(value="2.0", id="rule_packet_rate", classes="rule-input")
+                        
+                        yield Label("Compound Heuristic Multipliers", classes="block-title")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Flood Packet Rate Mul:", classes="rule-label")
+                            yield Input(value="3.0", id="rule_flood_rate", classes="rule-input")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Flood Entropy Ceiling:", classes="rule-label")
+                            yield Input(value="1.0", id="rule_flood_entropy", classes="rule-input")
+                        with Horizontal(classes="config-row"):
+                            yield Label("Scan Entropy Floor:", classes="rule-label")
+                            yield Input(value="3.0", id="rule_scan_entropy", classes="rule-input")
 
                 with TabPane("About", id="about"):
                     with VerticalScroll(id="about_scroll"):
@@ -734,6 +773,12 @@ class ShannonEntropyApp(App[None]):
         else:
             status.update("Status: Idle (charts cleared)")
 
+    def get_float_input(self, input_id: str, default: float) -> float:
+        try:
+            return float(self.query_one(f"#{input_id}", Input).value)
+        except Exception:
+            return default
+
     def refresh_live_report(self) -> None:
         trends_metrics = self.query_one("#trends_metrics", Static)
         analyzer_output = self.query_one("#analyzer_output", Static)
@@ -789,6 +834,12 @@ class ShannonEntropyApp(App[None]):
             current_shannon_bits=entropy_result.entropy_bits,
             current_packet_rate=packet_rate,
             current_dominant_share=success_probability,
+            shannon_drop_tolerance=self.get_float_input("rule_shannon_drop", 0.7),
+            dominant_share_tolerance=self.get_float_input("rule_dominant_share", 0.15),
+            packet_rate_multiplier=self.get_float_input("rule_packet_rate", 2.0),
+            flood_packet_rate_multiplier=self.get_float_input("rule_flood_rate", 3.0),
+            flood_entropy_ceiling=self.get_float_input("rule_flood_entropy", 1.0),
+            scan_entropy_floor=self.get_float_input("rule_scan_entropy", 3.0),
         )
 
         tick = len(self.refresh_history) + 1
