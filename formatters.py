@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+
 from analysis import ascii_rate_plot, ascii_series_plot, running_success_rate
 from models import EntropyResult, RefreshSnapshot
 
@@ -151,6 +153,42 @@ def format_shannon_entropy_timeline(history: list[RefreshSnapshot]) -> str:
         "H(X) over refresh ticks:",
         ascii_series_plot(values, y_min=0.0, y_max=y_max),
     ]
+    return "\n".join(lines)
+
+
+def format_packet_analysis(symbols: list[str], elapsed_seconds: float) -> str:
+    if not symbols:
+        return "Packet Analysis\n---------------\nNo packets captured yet."
+
+    counts = Counter(symbols)
+    total = len(symbols)
+    unique = len(counts)
+    top_items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    dominant_symbol, dominant_count = top_items[0]
+    dominant_share = dominant_count / total
+    packet_rate = total / elapsed_seconds if elapsed_seconds > 0 else 0.0
+
+    # Herfindahl-Hirschman-style concentration index for protocol mix intensity.
+    concentration = sum((count / total) ** 2 for count in counts.values())
+    diversity = 1.0 - concentration
+
+    lines = [
+        "Packet Analysis",
+        "---------------",
+        f"Total packets: {total}",
+        f"Observed protocol classes: {unique}",
+        f"Approx packet rate: {packet_rate:.2f} packets/s",
+        f"Dominant protocol: {dominant_symbol} ({dominant_share:.2%})",
+        f"Protocol concentration index: {concentration:.4f}",
+        f"Protocol diversity score: {diversity:.4f}",
+        "",
+        "Protocol distribution:",
+    ]
+
+    for symbol, count in top_items:
+        share = count / total
+        lines.append(f"  {symbol:<12} count={count:>6}  share={share:>7.2%}")
+
     return "\n".join(lines)
 
 

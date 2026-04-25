@@ -19,6 +19,7 @@ from formatters import (
     format_capture_report,
     format_entropy_report,
     format_entropy_summary,
+    format_packet_analysis,
     format_refresh_history,
     format_shannon_entropy_timeline,
     format_trends_metrics,
@@ -85,6 +86,7 @@ class ShannonEntropyApp(App[None]):
 
     #analyzer_output,
     #trends_output,
+    #packet_output,
     #about_text {
         height: 1fr;
         border: round green;
@@ -112,6 +114,7 @@ class ShannonEntropyApp(App[None]):
         self.refresh_timer: Any = None
         self.last_analyzer_text = ""
         self.last_trends_text = ""
+        self.last_packet_text = ""
         self.refresh_history: list[RefreshSnapshot] = []
         self.last_snapshot_packet_count = 0
 
@@ -145,6 +148,12 @@ class ShannonEntropyApp(App[None]):
                     yield Static(
                         "Binary entropy chart and refresh history will appear here after capture starts.",
                         id="trends_output",
+                    )
+
+                with TabPane("Packet Analysis", id="packet_analysis"):
+                    yield Static(
+                        "Protocol distribution and mixing metrics will appear here after capture starts.",
+                        id="packet_output",
                     )
 
                 with TabPane("About", id="about"):
@@ -204,6 +213,7 @@ class ShannonEntropyApp(App[None]):
             self.last_snapshot_packet_count = 0
             self.last_analyzer_text = ""
             self.last_trends_text = ""
+            self.last_packet_text = ""
 
             self.sniffer = AsyncSniffer(iface=iface, prn=self._on_packet, store=False)
             self.sniffer.start()
@@ -242,6 +252,7 @@ class ShannonEntropyApp(App[None]):
 
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
+        packet_output = self.query_one("#packet_output", Static)
         status = self.query_one("#status", Label)
 
         if self.refresh_timer is not None:
@@ -263,6 +274,7 @@ class ShannonEntropyApp(App[None]):
             status.update("Status: Stopped")
             analyzer_output.update(self.last_analyzer_text + "\n\nCapture stopped by user.")
             trends_output.update(self.last_trends_text + "\n\nCapture stopped by user.")
+            packet_output.update(self.last_packet_text + "\n\nCapture stopped by user.")
         else:
             status.update("Status: Idle")
 
@@ -317,6 +329,7 @@ class ShannonEntropyApp(App[None]):
         trends_metrics = self.query_one("#trends_metrics", Static)
         analyzer_output = self.query_one("#analyzer_output", Static)
         trends_output = self.query_one("#trends_output", Static)
+        packet_output = self.query_one("#packet_output", Static)
         status = self.query_one("#status", Label)
 
         with self.capture_lock:
@@ -331,11 +344,14 @@ class ShannonEntropyApp(App[None]):
                 + "\n\nAwaiting packets. Generate network activity or wait for next refresh."
             )
             trends_text = "No trend data yet. Capture is active but no packets have been observed."
+            packet_text = "No packet analysis yet. Capture is active but no packets have been observed."
             self.last_analyzer_text = analyzer_text
             self.last_trends_text = trends_text
+            self.last_packet_text = packet_text
             analyzer_output.update(analyzer_text)
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
             trends_output.update(trends_text)
+            packet_output.update(packet_text)
             if self.is_listening:
                 status.update("Status: Listening...")
             return
@@ -382,11 +398,15 @@ class ShannonEntropyApp(App[None]):
             + bernoulli_report
         )
 
+        packet_text = format_packet_analysis(symbols, elapsed)
+
         self.last_analyzer_text = analyzer_text
         self.last_trends_text = trends_text
+        self.last_packet_text = packet_text
         analyzer_output.update(analyzer_text)
         trends_metrics.update(format_trends_metrics(self.refresh_history))
         trends_output.update(trends_text)
+        packet_output.update(packet_text)
 
         if self.is_listening:
             status.update("Status: Listening...")

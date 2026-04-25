@@ -13,6 +13,7 @@ A simple Textual-based terminal UI app that:
 
 - **Analyzer**: live H(X), capture session summary, and symbol probability report.
 - **Trends**: Shannon H(X) timeline (dynamic axis), binary entropy chart, refresh history table, and Bernoulli chart.
+- **Packet Analysis**: protocol class breakdown, packet-rate context, and protocol-mixing indicators.
 - **About**: concise explanation and reference link.
 
 ## What to enter
