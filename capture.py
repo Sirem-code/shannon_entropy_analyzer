@@ -22,7 +22,6 @@ frames full of headers and payloads. This module bridges that gap by:
 When a packet arrives, `packet_to_symbol()` examines its layers from the
 outside in, following the OSI/TCP-IP model:
 
-```
 ┌──────────────────────────────────┐
 │ Layer 2: Is it ARP?              │ → "ARP"
 ├──────────────────────────────────┤
@@ -42,7 +41,6 @@ outside in, following the OSI/TCP-IP model:
 ├──────────────────────────────────┤
 │ Anything else                    │ → "OTHER"
 └──────────────────────────────────┘
-```
 
 ## Important Notes for Students
 
@@ -130,9 +128,10 @@ def packet_to_symbol(packet: Any) -> str:
 
     return "OTHER"
 
-from models import PacketSummary
 
+from models import PacketSummary
 import datetime
+
 
 def packet_to_summary(packet: Any, index: int) -> PacketSummary:
     """

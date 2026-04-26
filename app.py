@@ -354,8 +354,10 @@ class ShannonEntropyApp(App[None]):
         border: solid $border;
         padding: 1;
         margin-top: 1;
-        height: 1fr;
+        height: auto;
+        min-height: 5;
     }
+
 
     #duration_container {
         border: solid $border;
@@ -489,15 +491,17 @@ class ShannonEntropyApp(App[None]):
                             yield ActivityMeter(id="activity_meter")
                             yield Label("Packets: [b]0[/b]", id="packet_counter")
 
-                        with Vertical(classes="main-panel scroll-box"):
+                        with VerticalScroll(classes="main-panel"):
                             yield Label("Live Protocol Stream", classes="section-title")
                             yield ProtocolLog(id="protocol_log")
+                            yield Label("Entropy Result", classes="section-title")
                             yield Static(
                                 "Waiting for capture...",
                                 id="analyzer_output",
                             )
                             yield Label("Dominant Process (Success Share)", classes="section-title")
                             yield Static("Start capture to view Bernoulli sequence.", id="bernoulli_output")
+
 
 
                 with TabPane("Trends", id="trends"):
