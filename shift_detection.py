@@ -220,14 +220,8 @@ def detect_shift(
             f"[!] VOLATILITY ALERT: High Entropy Jitter! Standard deviation is very high ({std_shannon:.2f}), indicating an unstable network state."
         )
 
-    # 2. Sustained State Warning (Sustained low entropy)
-    if all(item.shannon_entropy_bits < flood_entropy_ceiling for item in baseline) and len(baseline) >= 5:
-        score += 4.0
-        reasons.append(
-            f"[!] SUSTAINED ALERT: Entropy has remained critically low (< {flood_entropy_ceiling:.2f}) for {len(baseline)} ticks (Possible continuous Broadcast Storm or Monoculture)."
-        )
-
     # 3. New Species / Unknown Protocol Alert
+
     if new_protocols:
         score += 3.0
         reasons.append(
