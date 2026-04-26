@@ -8,13 +8,16 @@ The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and 
 ## Key Features
 - **Live Packet Sniffing**: Real-time traffic capture with customizable BPF filters (e.g., `tcp`, `port 443`).
 - **Dynamic Shift Detection**: Automatically calculates rolling baselines and detects statistically significant deviations in packet rates and entropy.
+- **Security Intelligence (DPI)**: 
+  - **Signature Matching**: Scans payloads for shellcode and NOP sleds.
+  - **Behavioral Scanning**: Detects port scanning and SYN flooding by tracking IP-level state.
+  - **Protocol Anomaly**: Identifies ICMP tunneling and other oversized protocol payloads.
 - **Advanced Heuristic Alerts**:
   - **DoS/Flood Attack**: Detects massive spikes in packet rates combined with critically low entropy.
-  - **Port Scan/Reconnaissance**: Identifies high packet rates combined with high or spiking entropy (diversity of ports/protocols).
-  - **Data Exfiltration/Tunneling**: Catches sudden extreme spikes in entropy that often indicate encrypted or highly randomized traffic leaving the network.
-  - **Entropy Volatility (Jitter)**: Warns when network traffic diversity is highly unstable.
-  - **Sustained State Warnings**: Alerts if the network remains in a flooded or unnatural state for extended periods.
+  - **Port Scan/Reconnaissance**: Identifies high packet rates combined with high or spiking entropy.
+  - **Data Exfiltration**: Catches sudden extreme spikes in entropy indicating encrypted or random traffic.
   - **New Species Alert**: Notifies you when a completely new protocol appears that wasn't in the baseline.
+
 - **Configurable Alert Rules**: Tweak the sensitivity of all detection algorithms on the fly via the built-in UI.
 - **Exporting**: Save your refresh history and metrics to CSV or MATLAB `.m` formats for post-incident analysis.
 
@@ -26,6 +29,24 @@ Ensure you have Python 3.10+ installed.
 pip install scapy textual
 ```
 *(Note: On Windows, Scapy requires Npcap to be installed to capture packets).*
+
+3. (Optional) Run the application with a specific interface:
+```bash
+python app.py --interface "Wi-Fi"
+```
+
+## Running Tests
+The project includes a comprehensive unit test suite to ensure mathematical accuracy and security detection reliability.
+
+To run all tests:
+```bash
+python -m unittest discover tests
+```
+
+To run a specific test module (e.g., Analysis):
+```bash
+python -m unittest tests/test_analysis.py
+```
 
 ## Usage
 Run the application directly:

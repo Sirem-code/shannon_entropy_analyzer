@@ -171,27 +171,28 @@ def detect_shift(
     score = 0.0
 
     shannon_delta = current_shannon_bits - mean_shannon
-    if std_shannon > 0 and abs(shannon_delta) > 2.5 * std_shannon:
-        score += 2.0
+    if std_shannon > 0 and abs(shannon_delta) > 3.0 * std_shannon:
+        score += 1.5
         reasons.append(
-            f"Shannon entropy shift: {shannon_delta:+.3f} bits vs baseline mean {mean_shannon:.3f}"
+            f"Significant entropy shift: {shannon_delta:+.3f} bits vs baseline mean {mean_shannon:.3f}"
         )
     elif abs(shannon_delta) > shannon_drop_tolerance:
-        score += 1.0
+        score += 0.5
         reasons.append(f"Entropy moved by {shannon_delta:+.3f} bits from baseline")
 
     dominant_share_delta = current_dominant_share - mean_dominant_share
     if abs(dominant_share_delta) > dominant_share_tolerance:
-        score += 2.0
+        score += 1.0
         reasons.append(
             f"Dominant share changed by {dominant_share_delta:+.2%} vs baseline {mean_dominant_share:.2%}"
         )
 
     if median_packet_rate > 0 and current_packet_rate > packet_rate_multiplier * median_packet_rate:
-        score += 2.0
+        score += 1.5
         reasons.append(
             f"Packet rate spike: {current_packet_rate:.2f}/s vs baseline median {median_packet_rate:.2f}/s"
         )
+
 
     # Compound Heuristic Alerts
     packet_rate_ratio = current_packet_rate / median_packet_rate if median_packet_rate > 0 else 1.0
