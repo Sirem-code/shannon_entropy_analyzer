@@ -138,6 +138,7 @@ class IPLookupScreen(ModalScreen):
         if result.status == "success":
             self.query_one("#lookup_status").update("[green]Success[/]")
             report = (
+                f"[b]Hostname:[/b] {result.hostname}\n"
                 f"[b]Location:[/b] {result.city}, {result.region_name}, {result.country} ({result.zip})\n"
                 f"[b]ISP:[/b]      {result.isp}\n"
                 f"[b]Org:[/b]      {result.org}\n"
@@ -656,6 +657,8 @@ class ShannonEntropyApp(App[None]):
                             
                             yield Label("Selection", classes="section-title")
                             yield Static("Select a packet to see details.", id="inspector_selection_info")
+                            yield Static("", id="inspector_hostname_info")
+                            yield Button("Resolve Hostnames", id="resolve_hostnames", disabled=True)
                             
                             yield Label("Geographic Lookup", classes="section-title")
                             yield Button("Lookup Source IP", id="lookup_src", disabled=True)
@@ -749,6 +752,10 @@ class ShannonEntropyApp(App[None]):
             if self.selected_dest_ip:
                 self.push_screen(IPLookupScreen(self.selected_dest_ip))
             return
+        if event.button.id == "resolve_hostnames":
+            self.query_one("#inspector_hostname_info").update("[dim]Resolving...[/]")
+            self.run_worker(self.perform_hostname_resolution, thread=True)
+            return
 
     def action_toggle_analyze(self) -> None:
         """Toggles packet capture session."""
@@ -803,6 +810,8 @@ class ShannonEntropyApp(App[None]):
                     
                     self.query_one("#lookup_src", Button).disabled = False
                     self.query_one("#lookup_dst", Button).disabled = False
+                    self.query_one("#resolve_hostnames", Button).disabled = False
+                    self.query_one("#inspector_hostname_info").update("")
             except Exception:
                 pass
 
@@ -870,6 +879,8 @@ class ShannonEntropyApp(App[None]):
             self.selected_dest_ip = ""
             self.query_one("#lookup_src", Button).disabled = True
             self.query_one("#lookup_dst", Button).disabled = True
+            self.query_one("#resolve_hostnames", Button).disabled = True
+            self.query_one("#inspector_hostname_info").update("")
             
             with self.capture_lock:
                 self.captured_symbols = []
@@ -1369,6 +1380,31 @@ class ShannonEntropyApp(App[None]):
             status.update("Status: Listening...")
         else:
             status.update("Status: Done")
+
+
+    def perform_hostname_resolution(self) -> None:
+        """Resolves hostnames for current selection in a background thread."""
+        import socket
+        src_host = "Unknown"
+        dst_host = "Unknown"
+        
+        if self.selected_source_ip:
+            try:
+                src_host = socket.gethostbyaddr(self.selected_source_ip)[0]
+            except Exception:
+                src_host = "N/A"
+        
+        if self.selected_dest_ip:
+            try:
+                dst_host = socket.gethostbyaddr(self.selected_dest_ip)[0]
+            except Exception:
+                dst_host = "N/A"
+        
+        self.app.call_from_thread(self._update_hostname_info, src_host, dst_host)
+
+    def _update_hostname_info(self, src: str, dst: str) -> None:
+        info = f"[b]Source:[/b] [cyan]{src}[/]\n[b]Dest:[/b]   [cyan]{dst}[/]"
+        self.query_one("#inspector_hostname_info").update(info)
 
 
 if __name__ == "__main__":

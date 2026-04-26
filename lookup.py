@@ -1,5 +1,6 @@
 import urllib.request
 import json
+import socket
 from dataclasses import dataclass
 
 @dataclass
@@ -13,6 +14,7 @@ class IPLookupResult:
     isp: str = ""
     org: str = ""
     as_name: str = ""
+    hostname: str = "Unknown"
     message: str = ""
 
 def lookup_ip(ip: str) -> IPLookupResult:
@@ -31,6 +33,13 @@ def lookup_ip(ip: str) -> IPLookupResult:
             if data.get("status") == "fail":
                 return IPLookupResult(ip=ip, status="fail", message=data.get("message", "Unknown error"))
             
+            
+            # Reverse DNS lookup
+            try:
+                hostname = socket.gethostbyaddr(ip)[0]
+            except Exception:
+                hostname = "Unknown"
+
             return IPLookupResult(
                 ip=ip,
                 status="success",
@@ -40,7 +49,8 @@ def lookup_ip(ip: str) -> IPLookupResult:
                 zip=data.get("zip", "N/A"),
                 isp=data.get("isp", "N/A"),
                 org=data.get("org", "N/A"),
-                as_name=data.get("as", "N/A")
+                as_name=data.get("as", "N/A"),
+                hostname=hostname
             )
     except Exception as e:
         return IPLookupResult(ip=ip, status="fail", message=str(e))
