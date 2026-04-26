@@ -366,8 +366,9 @@ class ShannonEntropyApp(App[None]):
         display: none;
     }
 
-    .rule-label { width: 1fr; color: $text-muted; }
+    .rule-label { width: 24; color: $text-muted; }
     .rule-input { width: 12; }
+
 
     .tips-collapsible {
         margin-top: 1;
