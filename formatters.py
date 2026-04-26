@@ -73,7 +73,73 @@ from analysis import ascii_rate_plot, ascii_series_plot, running_success_rate
 from models import EntropyResult, RefreshSnapshot, WarningEvent
 
 
+def format_protocol_bars(symbols: list[str]) -> str:
+    """
+    Formats a horizontal bar chart showing the distribution of the top 5 protocols.
+    
+    Args:
+        symbols: List of captured protocol symbols.
+        
+    Returns:
+        A multiline string with ASCII progress bars.
+    """
+    if not symbols:
+        return "Awaiting protocol distribution data..."
+    
+    counts = Counter(symbols)
+    total = len(symbols)
+    top_items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+    
+    lines = [
+        "Protocol Distribution (Top 5)",
+        "----------------------------"
+    ]
+    for symbol, count in top_items:
+        share = count / total
+        bar_len = int(share * 20)
+        # Using full block and light shade for the bar
+        bar = "█" * bar_len + "░" * (20 - bar_len)
+        lines.append(f"{symbol:<12} {bar} {share:>6.1%}")
+    
+    return "\n".join(lines)
+
+
+def format_entropy_meter(result: EntropyResult) -> str:
+    """
+    Renders a visual gauge showing current entropy relative to maximum possible entropy.
+    
+    Args:
+        result: The EntropyResult object.
+        
+    Returns:
+        A multiline string containing a visual gauge and status interpretation.
+    """
+    # Normalized entropy is result.normalized_entropy (0.0 to 1.0)
+    bar_len = int(result.normalized_entropy * 30)
+    gauge = "━" * bar_len + "╸" + "─" * (30 - bar_len)
+    
+    # Interpretation based on entropy levels
+    status = "CONCENTRATED"
+    color = "yellow"
+    if result.normalized_entropy > 0.7:
+        status = "DIVERSE"
+        color = "green"
+    elif result.normalized_entropy > 0.3:
+        status = "MIXING"
+        color = "blue"
+        
+    lines = [
+        "Network Diversity Meter",
+        "-----------------------",
+        f"H(X) Normalized: {result.normalized_entropy:.1%}",
+        f"[{gauge}]",
+        f"Status: {status}"
+    ]
+    return "\n".join(lines)
+
+
 def format_entropy_summary(result: EntropyResult) -> str:
+
     """
     Formats a concise summary of the entropy calculation.
     

@@ -93,11 +93,14 @@ from formatters import (
     format_entropy_summary,
     format_investigation_report,
     format_packet_analysis,
+    format_protocol_bars,
+    format_entropy_meter,
     format_refresh_history,
     format_shannon_entropy_timeline,
     format_trends_metrics,
     format_warning_queue,
 )
+
 from models import RefreshSnapshot, WarningEvent, PacketSummary
 
 from shift_detection import detect_shift
@@ -494,13 +497,19 @@ class ShannonEntropyApp(App[None]):
                         with VerticalScroll(classes="main-panel"):
                             yield Label("Live Protocol Stream", classes="section-title")
                             yield ProtocolLog(id="protocol_log")
+                            
+                            yield Label("Top Protocols", classes="section-title")
+                            yield Static("Awaiting protocol distribution data...", id="protocol_distribution_bars", classes="card")
+                            
+                            yield Label("Diversity Pulse", classes="section-title")
+                            yield Static("Awaiting diversity metrics...", id="entropy_meter", classes="card")
+
                             yield Label("Entropy Result", classes="section-title")
                             yield Static(
                                 "Waiting for capture...",
                                 id="analyzer_output",
                             )
-                            yield Label("Dominant Process (Success Share)", classes="section-title")
-                            yield Static("Start capture to view Bernoulli sequence.", id="bernoulli_output")
+
 
 
 
@@ -518,6 +527,9 @@ class ShannonEntropyApp(App[None]):
                         with Vertical(classes="main-panel scroll-box"):
                             yield Label("Historical Trends", classes="section-title")
                             yield Static("Visual charts appear here.", id="trends_output")
+                            yield Label("Dominant Process (Success Share)", classes="section-title")
+                            yield Static("Start capture to view Bernoulli sequence.", id="bernoulli_output")
+
                             with Collapsible(title="Data Table View", collapsed=True):
                                 yield DataTable(id="history_table")
                             with Collapsible(title="💡 Interpretation Tips", collapsed=True, classes="tips-collapsible"):
@@ -996,16 +1008,16 @@ class ShannonEntropyApp(App[None]):
                 + "\n\nAwaiting packets. Generate network activity or wait for next refresh."
             )
             trends_text = "No trend data yet. Capture is active but no packets have been observed."
-            packet_text = "No packet analysis yet. Capture is active but no packets have been observed."
             investigate_text = "No investigation data yet. Capture is active but no packets have been observed."
             warnings_text = "Warnings window\n---------------\nNo WARNING/CRITICAL events have been queued."
+
             self.last_analyzer_text = analyzer_text
             self.last_trends_text = trends_text
-            self.last_packet_text = packet_text
             self.last_investigate_text = investigate_text
             self.last_warnings_text = warnings_text
             analyzer_output.update(analyzer_text)
-            self.query_one("#bernoulli_output", Static).update("Awaiting packets...")
+            self.query_one("#protocol_distribution_bars", Static).update("Awaiting protocols...")
+            self.query_one("#entropy_meter", Static).update("Awaiting metrics...")
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
 
             trends_output.update(trends_text)
@@ -1107,9 +1119,11 @@ class ShannonEntropyApp(App[None]):
             + format_capture_report(interface, elapsed, self.refresh_seconds, total_packets)
             + f"\nFilter: [b]{self.capture_filter}[/b]"
             + "\n\n"
-            + format_entropy_report(entropy_result)
         )
-
+        self.query_one("#protocol_distribution_bars", Static).update(format_protocol_bars(symbols))
+        self.query_one("#entropy_meter", Static).update(format_entropy_meter(entropy_result))
+        
+        # Update Trends
         trends_text = (
             format_shannon_entropy_timeline(self.refresh_history)
             + "\n\n"
@@ -1117,6 +1131,7 @@ class ShannonEntropyApp(App[None]):
             + "\n\n"
             + bernoulli_report
         )
+
         self.query_one("#bernoulli_output", Static).update(bernoulli_report)
 
 
