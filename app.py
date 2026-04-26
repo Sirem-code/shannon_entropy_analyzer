@@ -130,9 +130,9 @@ class IPLookupScreen(ModalScreen):
     def on_mount(self) -> None:
         self.run_worker(self.perform_lookup, thread=True)
 
-    async def perform_lookup(self) -> None:
+    def perform_lookup(self) -> None:
         result = lookup_ip(self.ip)
-        self.call_from_thread(self.update_results, result)
+        self.app.call_from_thread(self.update_results, result)
 
     def update_results(self, result: IPLookupResult) -> None:
         if result.status == "success":
