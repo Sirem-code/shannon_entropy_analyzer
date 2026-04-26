@@ -102,8 +102,10 @@ from formatters import (
 )
 
 from models import RefreshSnapshot, WarningEvent, PacketSummary
-
 from shift_detection import detect_shift
+
+from threats import ThreatScanner, format_threat_summary
+
 
 
 class ProtocolLog(Static):
@@ -430,6 +432,8 @@ class ShannonEntropyApp(App[None]):
         self.packet_summaries: deque[PacketSummary] = deque(maxlen=1000)
         self.total_packets_captured = 0
         self.inspector_freeze = False
+        self.threat_scanner = ThreatScanner()
+
 
 
     def on_mount(self) -> None:
@@ -509,6 +513,10 @@ class ShannonEntropyApp(App[None]):
                                 "Waiting for capture...",
                                 id="analyzer_output",
                             )
+                            
+                            yield Label("Security Alerts", classes="section-title")
+                            yield Static("No threats detected.", id="threat_alerts_summary", classes="card")
+
 
 
 
@@ -832,11 +840,29 @@ class ShannonEntropyApp(App[None]):
             start_btn.label = "Start Listening"
             start_btn.remove_class("btn-stop")
             start_btn.add_class("btn-start")
-
     def _on_packet(self, packet: Any) -> None:
         symbol = packet_to_symbol(packet)
         with self.capture_lock:
+
+            # DPI Threat Scanning
+            p_index = self.total_packets_captured
+            threats = self.threat_scanner.scan_packet(packet, p_index)
+            if threats:
+                for threat in threats:
+                    if threat.severity in {"HIGH", "CRITICAL"}:
+                        self.warning_events.append(
+                            WarningEvent(
+                                tick=len(self.refresh_history),
+                                elapsed_seconds=(time.time() - self.start_time) if self.start_time else 0,
+                                level=threat.severity,
+                                score=5.0 if threat.severity == "CRITICAL" else 3.0,
+                                reasons=[threat.description],
+                                status="ACTIVE"
+                            )
+                        )
+
             self.total_packets_captured += 1
+
             idx = self.total_packets_captured
             summary = packet_to_summary(packet, idx)
             self.packet_summaries.append(summary)
@@ -1122,6 +1148,8 @@ class ShannonEntropyApp(App[None]):
         )
         self.query_one("#protocol_distribution_bars", Static).update(format_protocol_bars(symbols))
         self.query_one("#entropy_meter", Static).update(format_entropy_meter(entropy_result))
+        self.query_one("#threat_alerts_summary", Static).update(format_threat_summary(self.threat_scanner.alerts))
+
         
         # Update Trends
         trends_text = (

@@ -116,14 +116,14 @@ def detect_shift(
     current_packet_rate: float,
     current_dominant_share: float,
     new_protocols: set[str] = None,
-    window_size: int = 8,
-    min_baseline_points: int = 5,
-    shannon_drop_tolerance: float = 0.7,
-    dominant_share_tolerance: float = 0.15,
-    packet_rate_multiplier: float = 2.0,
-    flood_packet_rate_multiplier: float = 3.0,
-    flood_entropy_ceiling: float = 1.0,
-    scan_entropy_floor: float = 3.0,
+    window_size: int = 15,
+    min_baseline_points: int = 10,
+    shannon_drop_tolerance: float = 1.2,
+    dominant_share_tolerance: float = 0.25,
+    packet_rate_multiplier: float = 3.0,
+    flood_packet_rate_multiplier: float = 4.0,
+    flood_entropy_ceiling: float = 0.8,
+    scan_entropy_floor: float = 3.5,
 ) -> ShiftAssessment:
     """
     Analyzes the current network metrics against a rolling historical baseline
