@@ -128,7 +128,10 @@ def packet_to_symbol(packet: Any) -> str:
     if IPv6 is not None and packet.haslayer(IPv6):
         return "IPv6"
 
+    return "OTHER"
+
 from models import PacketSummary
+
 import datetime
 
 def packet_to_summary(packet: Any, index: int) -> PacketSummary:

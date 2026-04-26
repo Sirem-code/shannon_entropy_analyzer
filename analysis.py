@@ -79,9 +79,10 @@ def compute_shannon_entropy(symbols: Iterable[str]) -> EntropyResult:
     Returns:
         EntropyResult containing the calculated entropy metrics.
     """
-    symbol_list = list(symbols)
+    # Filter out any None values to prevent sorting errors
+    symbol_list = [str(s) for s in symbols if s is not None]
     if not symbol_list:
-        raise ValueError("No network symbols were provided.")
+        return EntropyResult(0, 0, 0.0, 0.0, 0.0, [])
 
     counts = Counter(symbol_list)
     total = sum(counts.values())
