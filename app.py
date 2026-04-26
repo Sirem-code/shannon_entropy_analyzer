@@ -441,10 +441,11 @@ class ShannonEntropyApp(App[None]):
         self.query_one(TabbedContent).hide_tab("warnings")
         self._closing = False
         
-        # Initialize Inspector Table
-        table = self.query_one("#inspector_table", DataTable)
-        table.cursor_type = "row"
-        table.add_columns("No.", "Time", "Source", "Destination", "Protocol", "Length", "Info")
+        # Initialize Security Table
+        sec_table = self.query_one("#security_events_table", DataTable)
+        sec_table.cursor_type = "row"
+        sec_table.add_columns("Time", "Severity", "Type", "Source IP", "Description")
+
 
 
     def on_unmount(self) -> None:
@@ -547,7 +548,31 @@ class ShannonEntropyApp(App[None]):
                                     "[b]Success Rate:[/b] Percentage of the most frequent protocol."
                                 )
 
+                with TabPane("Security", id="security_scanner"):
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Security Pulse", classes="section-title")
+                            yield Static("Scanning for threats...", id="security_status_label", classes="card")
+                            
+                            yield Label("Threat Distribution", classes="section-title")
+                            yield Static("Waiting for data...", id="threat_distribution_bars", classes="card")
+                            
+                            yield Label("Top Offenders (IP)", classes="section-title")
+                            yield Static("No offenders identified.", id="ip_watchlist", classes="card")
+
+                        with Vertical(classes="main-panel scroll-box"):
+                            yield Label("Live Security Events", classes="section-title")
+                            yield DataTable(id="security_events_table")
+                            
+                            with Collapsible(title="💡 Response Procedures", collapsed=True, classes="tips-collapsible"):
+                                yield Static(
+                                    "[b]Signature Match (Critical):[/b] Isolate the source host immediately. Check for web shell or RCE attempt.\n"
+                                    "[b]Port Scan (Medium):[/b] Typical reconnaissance. Monitor for follow-up attempts on open ports.\n"
+                                    "[b]SYN Flood (High):[/b] Implement rate limiting or block the source IP at the firewall."
+                                )
+
                 with TabPane("Inspector", id="packet_inspector"):
+
                     with Horizontal(classes="dashboard-container"):
                         with Vertical(classes="sidebar"):
                             yield Label("Feed Control", classes="section-title")
@@ -1163,7 +1188,53 @@ class ShannonEntropyApp(App[None]):
         self.query_one("#bernoulli_output", Static).update(bernoulli_report)
 
 
+        # Update Security Tab
+        sec_status = "SECURE"
+        if any(a.severity in {"HIGH", "CRITICAL"} for a in self.threat_scanner.alerts):
+            sec_status = "[b red]ALERT[/b red]"
+        self.query_one("#security_status_label", Static).update(f"Status: {sec_status}\nTotal Alerts: {len(self.threat_scanner.alerts)}")
+        
+        # Update Security Table (only add new ones)
+        sec_table = self.query_one("#security_events_table", DataTable)
+        # For simplicity in this TUI, we'll clear and re-add or just keep track of count
+        if len(self.threat_scanner.alerts) > sec_table.row_count:
+            # Add only the newest alerts
+            for i in range(sec_table.row_count, len(self.threat_scanner.alerts)):
+                alert = self.threat_scanner.alerts[i]
+                t_str = time.strftime("%H:%M:%S", time.localtime(alert.timestamp))
+                severity_style = {
+                    "INFO": "blue",
+                    "MEDIUM": "yellow",
+                    "HIGH": "orange",
+                    "CRITICAL": "red"
+                }.get(alert.severity, "white")
+                
+                sec_table.add_row(
+                    t_str,
+                    f"[{severity_style}]{alert.severity}[/{severity_style}]",
+                    alert.threat_type,
+                    alert.source_ip,
+                    alert.description
+                )
+        
+        # Update IP Watchlist and Distribution
+        from collections import Counter
+        ip_counts = Counter(a.source_ip for a in self.threat_scanner.alerts)
+        type_counts = Counter(a.threat_type for a in self.threat_scanner.alerts)
+        
+        watchlist_lines = []
+        for ip, count in ip_counts.most_common(5):
+            watchlist_lines.append(f"{ip:<15} {count:>3} alerts")
+        self.query_one("#ip_watchlist", Static).update("\n".join(watchlist_lines) if watchlist_lines else "No offenders.")
+        
+        dist_lines = []
+        for t_type, count in type_counts.most_common(5):
+            bar = "█" * min(10, count)
+            dist_lines.append(f"{t_type:<12} {bar} {count}")
+        self.query_one("#threat_distribution_bars", Static).update("\n".join(dist_lines) if dist_lines else "Waiting for threats...")
+
         # Update DataTable
+
         table = self.query_one("#history_table", DataTable)
         last = self.refresh_history[-1]
         table.add_row(
