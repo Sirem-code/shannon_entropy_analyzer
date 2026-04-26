@@ -71,8 +71,10 @@ IP = getattr(scapy_all, "IP", None)
 IPv6 = getattr(scapy_all, "IPv6", None)
 TCP = getattr(scapy_all, "TCP", None)
 UDP = getattr(scapy_all, "UDP", None)
+Raw = getattr(scapy_all, "Raw", None)
 conf = getattr(scapy_all, "conf", None)
 AsyncSniffer = getattr(scapy_all, "AsyncSniffer", None)
+
 
 
 def detect_default_interface() -> str:
