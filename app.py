@@ -74,6 +74,7 @@ Timer fires → Lock packet buffer → Snapshot current symbols
 from collections import deque
 from pathlib import Path
 from threading import Lock
+import time
 from time import monotonic
 from typing import Any
 
@@ -105,7 +106,50 @@ from models import RefreshSnapshot, WarningEvent, PacketSummary
 from shift_detection import detect_shift
 
 from threats import ThreatScanner, format_threat_summary
+from lookup import lookup_ip, IPLookupResult
+from textual.screen import ModalScreen
 
+
+
+
+
+class IPLookupScreen(ModalScreen):
+    """A modal screen that displays IP geolocation information."""
+
+    def __init__(self, ip: str) -> None:
+        super().__init__()
+        self.ip = ip
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="lookup_modal"):
+            yield Label(f"IP Lookup: {self.ip}", id="lookup_title")
+            yield Static("Fetching data...", id="lookup_status")
+            yield Static("", id="lookup_results")
+            yield Button("Close", id="close_lookup", variant="primary")
+
+    def on_mount(self) -> None:
+        self.run_worker(self.perform_lookup, thread=True)
+
+    async def perform_lookup(self) -> None:
+        result = lookup_ip(self.ip)
+        self.call_from_thread(self.update_results, result)
+
+    def update_results(self, result: IPLookupResult) -> None:
+        if result.status == "success":
+            self.query_one("#lookup_status").update("[green]Success[/]")
+            report = (
+                f"[b]Location:[/b] {result.city}, {result.region_name}, {result.country} ({result.zip})\n"
+                f"[b]ISP:[/b]      {result.isp}\n"
+                f"[b]Org:[/b]      {result.org}\n"
+                f"[b]AS:[/b]       {result.as_name}"
+            )
+            self.query_one("#lookup_results").update(report)
+        else:
+            self.query_one("#lookup_status").update(f"[red]Failed: {result.message}[/]")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "close_lookup":
+            self.dismiss()
 
 
 class ProtocolLog(Static):
@@ -404,6 +448,29 @@ class ShannonEntropyApp(App[None]):
         background: $background;
     }
 
+    #lookup_modal {
+        width: 60;
+        height: auto;
+        background: $surface;
+        border: thick $primary;
+        padding: 1 2;
+        align: center middle;
+    }
+
+    #lookup_title {
+        width: 100%;
+        text-align: center;
+        text-style: bold;
+        color: $primary-light;
+        margin-bottom: 1;
+    }
+
+    #lookup_results {
+        margin: 1 0;
+        padding: 1;
+        background: $background;
+        border: solid $border;
+    }
     """
 
     def __init__(self) -> None:
@@ -433,6 +500,8 @@ class ShannonEntropyApp(App[None]):
         self.total_packets_captured = 0
         self.inspector_freeze = False
         self.threat_scanner = ThreatScanner()
+        self.selected_source_ip = ""
+        self.selected_dest_ip = ""
 
 
 
@@ -588,6 +657,10 @@ class ShannonEntropyApp(App[None]):
                             yield Label("Selection", classes="section-title")
                             yield Static("Select a packet to see details.", id="inspector_selection_info")
                             
+                            yield Label("Geographic Lookup", classes="section-title")
+                            yield Button("Lookup Source IP", id="lookup_src", disabled=True)
+                            yield Button("Lookup Dest IP", id="lookup_dst", disabled=True)
+                            
                         with Vertical(classes="main-panel"):
                             yield Label("Live Packet Feed (Wireshark-style)", classes="section-title")
                             yield DataTable(id="inspector_table")
@@ -668,6 +741,14 @@ class ShannonEntropyApp(App[None]):
             tabs = self.query_one(TabbedContent)
             tabs.active = "investigate"
             return
+        if event.button.id == "lookup_src":
+            if self.selected_source_ip:
+                self.push_screen(IPLookupScreen(self.selected_source_ip))
+            return
+        if event.button.id == "lookup_dst":
+            if self.selected_dest_ip:
+                self.push_screen(IPLookupScreen(self.selected_dest_ip))
+            return
 
     def action_toggle_analyze(self) -> None:
         """Toggles packet capture session."""
@@ -716,6 +797,12 @@ class ShannonEntropyApp(App[None]):
                 if target:
                     self.query_one("#inspector_details", Static).update(target.raw_details)
                     self.query_one("#inspector_selection_info", Static).update(f"Packet #{idx} selected.")
+                    
+                    self.selected_source_ip = target.source
+                    self.selected_dest_ip = target.destination
+                    
+                    self.query_one("#lookup_src", Button).disabled = False
+                    self.query_one("#lookup_dst", Button).disabled = False
             except Exception:
                 pass
 
@@ -770,10 +857,19 @@ class ShannonEntropyApp(App[None]):
             self.capture_filter = bpf_filter or "all traffic"
             self.capture_started_at = monotonic()
 
-            # Initialize DataTable
-            table = self.query_one("#history_table", DataTable)
-            table.clear(columns=True)
-            table.add_columns("Tick", "Time", "Total", "+New", "Dominant", "p(s)", "H(X)")
+            # Initialize DataTables
+            history_table = self.query_one("#history_table", DataTable)
+            history_table.clear(columns=True)
+            history_table.add_columns("Tick", "Time", "Total", "+New", "Dominant", "p(s)", "H(X)")
+
+            inspector_table = self.query_one("#inspector_table", DataTable)
+            inspector_table.clear(columns=True)
+            inspector_table.add_columns("No.", "Time", "Source", "Destination", "Protocol", "Length", "Info")
+            
+            self.selected_source_ip = ""
+            self.selected_dest_ip = ""
+            self.query_one("#lookup_src", Button).disabled = True
+            self.query_one("#lookup_dst", Button).disabled = True
             
             with self.capture_lock:
                 self.captured_symbols = []
@@ -884,7 +980,7 @@ class ShannonEntropyApp(App[None]):
                         self.warning_events.append(
                             WarningEvent(
                                 tick=len(self.refresh_history),
-                                elapsed_seconds=(time.time() - self.start_time) if self.start_time else 0,
+                                elapsed_seconds=(time.monotonic() - self.capture_started_at) if self.capture_started_at else 0,
                                 level=threat.severity,
                                 score=5.0 if threat.severity == "CRITICAL" else 3.0,
                                 reasons=[threat.description],
