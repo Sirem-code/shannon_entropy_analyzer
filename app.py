@@ -446,6 +446,12 @@ class ShannonEntropyApp(App[None]):
         sec_table.cursor_type = "row"
         sec_table.add_columns("Time", "Severity", "Type", "Source IP", "Description")
 
+        # Initialize Inspector Table
+        table = self.query_one("#inspector_table", DataTable)
+        table.cursor_type = "row"
+        table.add_columns("No.", "Time", "Source", "Destination", "Protocol", "Length", "Info")
+
+
 
 
     def on_unmount(self) -> None:
