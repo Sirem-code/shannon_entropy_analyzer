@@ -128,4 +128,59 @@ def packet_to_symbol(packet: Any) -> str:
     if IPv6 is not None and packet.haslayer(IPv6):
         return "IPv6"
 
-    return "OTHER"
+from .models import PacketSummary
+import datetime
+
+def packet_to_summary(packet: Any, index: int) -> PacketSummary:
+    """
+    Converts a raw Scapy packet into a PacketSummary dataclass.
+    
+    Args:
+        packet: A raw Scapy packet.
+        index: Unique sequence number for the packet.
+        
+    Returns:
+        A PacketSummary object with decoded metadata.
+    """
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    src = "unknown"
+    dst = "unknown"
+    proto = packet_to_symbol(packet)
+    length = len(packet)
+    info = ""
+
+    if IP is not None and packet.haslayer(IP):
+        src = packet[IP].src
+        dst = packet[IP].dst
+    elif IPv6 is not None and packet.haslayer(IPv6):
+        src = packet[IPv6].src
+        dst = packet[IPv6].dst
+    elif ARP is not None and packet.haslayer(ARP):
+        src = packet[ARP].psrc
+        dst = packet[ARP].pdst
+        info = f"Who has {packet[ARP].pdst}? Tell {packet[ARP].psrc}"
+
+    if not info:
+        if TCP is not None and packet.haslayer(TCP):
+            tcp = packet[TCP]
+            info = f"Seq={tcp.seq} Ack={tcp.ack} Flags={tcp.flags}"
+        elif UDP is not None and packet.haslayer(UDP):
+            udp = packet[UDP]
+            info = f"Len={udp.len}"
+
+    raw_details = ""
+    try:
+        raw_details = packet.show(dump=True)
+    except Exception:
+        raw_details = "Error decoding raw details."
+
+    return PacketSummary(
+        index=index,
+        timestamp=timestamp,
+        source=src,
+        destination=dst,
+        protocol=proto,
+        length=length,
+        info=info,
+        raw_details=raw_details
+    )

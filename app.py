@@ -71,6 +71,7 @@ Timer fires → Lock packet buffer → Snapshot current symbols
 | `F1`       | Show the About tab       |
 """
 
+from collections import deque
 from pathlib import Path
 from threading import Lock
 from time import monotonic
@@ -81,7 +82,7 @@ from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch, Select, RadioSet, RadioButton
 
 from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
-from capture import AsyncSniffer, detect_default_interface, packet_to_symbol
+from capture import AsyncSniffer, detect_default_interface, packet_to_symbol, packet_to_summary
 from exporters import export_refresh_history_csv, export_refresh_history_matlab_m
 from formatters import (
     about_text,
@@ -97,7 +98,8 @@ from formatters import (
     format_trends_metrics,
     format_warning_queue,
 )
-from models import RefreshSnapshot, WarningEvent
+from models import RefreshSnapshot, WarningEvent, PacketSummary
+
 from shift_detection import detect_shift
 
 
@@ -407,11 +409,21 @@ class ShannonEntropyApp(App[None]):
         self.last_warning_tick = -9999
         self.consecutive_warning_ticks = 0
         self.total_packets_count = 0
+        self.packet_summaries: deque[PacketSummary] = deque(maxlen=1000)
+        self.total_packets_captured = 0
+        self.inspector_freeze = False
+
 
     def on_mount(self) -> None:
         """Hides the warnings tab on application initialization."""
         self.query_one(TabbedContent).hide_tab("warnings")
         self._closing = False
+        
+        # Initialize Inspector Table
+        table = self.query_one("#inspector_table", DataTable)
+        table.cursor_type = "row"
+        table.add_columns("No.", "Time", "Source", "Destination", "Protocol", "Length", "Info")
+
 
     def on_unmount(self) -> None:
         """Cleans up resources upon app destruction."""
@@ -498,13 +510,23 @@ class ShannonEntropyApp(App[None]):
                                     "[b]Success Rate:[/b] Percentage of the most frequent protocol."
                                 )
 
-                with TabPane("Analysis", id="packet_analysis"):
-                    with VerticalScroll(classes="main-panel"):
-                        yield Label("Protocol Distribution", classes="section-title")
-                        yield Static(
-                            "Waiting for packets...",
-                            id="packet_output",
-                        )
+                with TabPane("Inspector", id="packet_inspector"):
+                    with Horizontal(classes="dashboard-container"):
+                        with Vertical(classes="sidebar"):
+                            yield Label("Feed Control", classes="section-title")
+                            yield Switch(id="inspector_freeze", value=False)
+                            yield Label("Freeze Feed", classes="label-muted")
+                            
+                            yield Label("Selection", classes="section-title")
+                            yield Static("Select a packet to see details.", id="inspector_selection_info")
+                            
+                        with Vertical(classes="main-panel"):
+                            yield Label("Live Packet Feed (Wireshark-style)", classes="section-title")
+                            yield DataTable(id="inspector_table")
+                            yield Label("Packet Details", classes="section-title")
+                            with VerticalScroll(classes="card"):
+                                yield Static("Click a packet above to decode its layers.", id="inspector_details")
+
 
                 with TabPane("Investigate", id="investigate"):
                     with Horizontal(classes="dashboard-container"):
@@ -603,6 +625,9 @@ class ShannonEntropyApp(App[None]):
         if event.switch.id == "interval_mode":
             is_active = event.value
             self.query_one("#duration_container").set_class(not is_active, "hidden")
+        elif event.switch.id == "inspector_freeze":
+            self.inspector_freeze = event.value
+
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handles selection changes for presets and UI settings."""
@@ -612,7 +637,21 @@ class ShannonEntropyApp(App[None]):
 
 
 
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Shows full packet details when a row is selected in the inspector."""
+        if event.data_table.id == "inspector_table":
+            try:
+                idx = int(event.row_key.value)
+                # Find the summary in our deque
+                target = next((p for p in self.packet_summaries if p.index == idx), None)
+                if target:
+                    self.query_one("#inspector_details", Static).update(target.raw_details)
+                    self.query_one("#inspector_selection_info", Static).update(f"Packet #{idx} selected.")
+            except Exception:
+                pass
+
     def on_unmount(self) -> None:
+
         """Cleans up resources upon app destruction."""
         self.stop_capture(user_requested=False)
 
@@ -764,14 +803,19 @@ class ShannonEntropyApp(App[None]):
     def _on_packet(self, packet: Any) -> None:
         symbol = packet_to_symbol(packet)
         with self.capture_lock:
+            self.total_packets_captured += 1
+            idx = self.total_packets_captured
+            summary = packet_to_summary(packet, idx)
+            self.packet_summaries.append(summary)
+            
             self.captured_symbols.append(symbol)
             self.total_packets_count += 1
             count = self.total_packets_count
         
-        # Update live counter, activity meter, and protocol log
-        self.call_from_thread(self._update_live_ui, count, symbol)
+        # Update live counter, activity meter, protocol log, and inspector table
+        self.call_from_thread(self._update_live_ui, count, symbol, summary)
 
-    def _update_live_ui(self, count: int, protocol: str) -> None:
+    def _update_live_ui(self, count: int, protocol: str, summary: PacketSummary) -> None:
         """Updates UI components from the capture thread safely."""
         if getattr(self, "_closing", False):
             return
@@ -785,9 +829,28 @@ class ShannonEntropyApp(App[None]):
             
             log = self.query_one("#protocol_log", ProtocolLog)
             log.add_protocol(protocol)
+            
+            # Update Inspector Table
+            if not self.inspector_freeze:
+                table = self.query_one("#inspector_table", DataTable)
+                table.add_row(
+                    str(summary.index),
+                    summary.timestamp,
+                    summary.source,
+                    summary.destination,
+                    summary.protocol,
+                    str(summary.length),
+                    summary.info,
+                    key=str(summary.index)
+                )
+                # Auto-scroll and prune
+                if table.row_count > 500:
+                    table.remove_row(list(table.rows.keys())[0])
+                table.scroll_to_row(table.row_count - 1)
         except Exception:
             # Handle cases where widgets are being unmounted during updates
             pass
+
 
     def export_history_csv(self) -> None:
         status = self.query_one("#status", Label)

@@ -89,3 +89,20 @@ class WarningEvent:
     score: float
     reasons: list[str]
     status: str = "NEW"
+
+
+@dataclass
+class PacketSummary:
+    """
+    A lightweight representation of a network packet for the Inspector UI.
+    """
+    index: int
+    timestamp: str
+    source: str
+    destination: str
+    protocol: str
+    length: int
+    info: str
+    threat_level: str = "NORMAL"  # NORMAL, SUSPICIOUS, THREAT
+    raw_details: str = ""        # Full Scapy show() output
+
