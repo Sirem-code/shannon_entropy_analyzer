@@ -449,21 +449,7 @@ class ShannonEntropyApp(App[None]):
                                 yield Label("Interval Mode", classes="label-muted")
                                 yield Switch(id="interval_mode", value=False)
 
-                            yield Label("UI Aesthetics", classes="section-title")
-                            yield Label("BG Opacity:", classes="label-muted")
-                            yield Select(
-                                [
-                                    ("100%", "100"),
-                                    ("90%", "90"),
-                                    ("80%", "80"),
-                                    ("70%", "70"),
-                                    ("60%", "60"),
-                                    ("50%", "50"),
-                                ],
-                                id="bg_opacity",
-                                value="100",
-                                prompt="Select..."
-                            )
+
 
                             
                             with Vertical(id="duration_container", classes="hidden"):
@@ -622,22 +608,7 @@ class ShannonEntropyApp(App[None]):
         if event.select.id == "filter_preset":
             if event.value != Select.BLANK:
                 self.query_one("#filter", Input).value = str(event.value)
-        elif event.select.id == "bg_opacity":
-            if event.value != Select.BLANK:
-                try:
-                    opacity = float(str(event.value)) / 100
-                    # Applying transparency to the main background color (#0d1117)
-                    self.screen.styles.background = f"rgba(13, 17, 23, {opacity})"
-                except Exception:
-                    pass
 
-            if event.value != Select.BLANK:
-                try:
-                    opacity = float(str(event.value)) / 100
-                    # Applying transparency to the main background color (#0d1117)
-                    self.screen.styles.background = f"rgba(13, 17, 23, {opacity})"
-                except Exception:
-                    pass
 
 
     def on_unmount(self) -> None:
