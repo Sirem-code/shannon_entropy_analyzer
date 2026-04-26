@@ -336,12 +336,13 @@ class ShannonEntropyApp(App[None]):
     }
 
     #protocol_log {
-        height: 1fr;
+        height: 10;
         background: $background;
         border: solid $border;
         padding: 0 1;
         color: $primary-light;
     }
+
 
     .scroll-box {
         height: 1fr;
@@ -379,11 +380,23 @@ class ShannonEntropyApp(App[None]):
     }
 
     DataTable {
-        height: auto;
-        max-height: 15;
+        height: 1fr;
+        max-height: 100%;
         background: $background;
         border: solid $border;
     }
+
+    #inspector_table {
+        height: 1fr;
+        min-height: 10;
+    }
+
+    #inspector_details_container {
+        height: 1fr;
+        border: solid $border;
+        background: $background;
+    }
+
     """
 
     def __init__(self) -> None:
@@ -524,8 +537,9 @@ class ShannonEntropyApp(App[None]):
                             yield Label("Live Packet Feed (Wireshark-style)", classes="section-title")
                             yield DataTable(id="inspector_table")
                             yield Label("Packet Details", classes="section-title")
-                            with VerticalScroll(classes="card"):
+                            with VerticalScroll(id="inspector_details_container"):
                                 yield Static("Click a packet above to decode its layers.", id="inspector_details")
+
 
 
                 with TabPane("Investigate", id="investigate"):
