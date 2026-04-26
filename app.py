@@ -445,10 +445,26 @@ class ShannonEntropyApp(App[None]):
                                 id="filter_preset",
                                 prompt="Select..."
                             )
-                            
                             with Horizontal(classes="compact-row"):
                                 yield Label("Interval Mode", classes="label-muted")
                                 yield Switch(id="interval_mode", value=False)
+
+                            yield Label("UI Aesthetics", classes="section-title")
+                            yield Label("BG Opacity:", classes="label-muted")
+                            yield Select(
+                                [
+                                    ("100%", "100"),
+                                    ("90%", "90"),
+                                    ("80%", "80"),
+                                    ("70%", "70"),
+                                    ("60%", "60"),
+                                    ("50%", "50"),
+                                ],
+                                id="bg_opacity",
+                                value="100",
+                                prompt="Select..."
+                            )
+
                             
                             with Vertical(id="duration_container", classes="hidden"):
                                 yield Label("Capture Speed:", classes="label-muted")
@@ -602,9 +618,27 @@ class ShannonEntropyApp(App[None]):
             self.query_one("#duration_container").set_class(not is_active, "hidden")
 
     def on_select_changed(self, event: Select.Changed) -> None:
-        """Updates the BPF filter input based on preset selection."""
-        if event.select.id == "filter_preset" and event.value is not Select.BLANK:
-            self.query_one("#filter", Input).value = str(event.value)
+        """Handles selection changes for presets and UI settings."""
+        if event.select.id == "filter_preset":
+            if event.value != Select.BLANK:
+                self.query_one("#filter", Input).value = str(event.value)
+        elif event.select.id == "bg_opacity":
+            if event.value != Select.BLANK:
+                try:
+                    opacity = float(str(event.value)) / 100
+                    # Applying transparency to the main background color (#0d1117)
+                    self.screen.styles.background = f"rgba(13, 17, 23, {opacity})"
+                except Exception:
+                    pass
+
+            if event.value != Select.BLANK:
+                try:
+                    opacity = float(str(event.value)) / 100
+                    # Applying transparency to the main background color (#0d1117)
+                    self.screen.styles.background = f"rgba(13, 17, 23, {opacity})"
+                except Exception:
+                    pass
+
 
     def on_unmount(self) -> None:
         """Cleans up resources upon app destruction."""
