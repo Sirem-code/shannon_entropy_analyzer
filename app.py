@@ -757,12 +757,15 @@ class ShannonEntropyApp(App[None]):
         if not self.is_listening and not self.sniffer:
             return
 
-        analyzer_output = self.query_one("#analyzer_output", Static)
-        trends_output = self.query_one("#trends_output", Static)
-        packet_output = self.query_one("#packet_output", Static)
-        investigate_output = self.query_one("#investigate_output", Static)
-        warnings_output = self.query_one("#warnings_output", Static)
-        status = self.query_one("#status", Label)
+        try:
+            analyzer_output = self.query_one("#analyzer_output", Static)
+            trends_output = self.query_one("#trends_output", Static)
+            investigate_output = self.query_one("#investigate_output", Static)
+            warnings_output = self.query_one("#warnings_output", Static)
+            status = self.query_one("#status", Label)
+        except Exception:
+            return
+
 
         if self.refresh_timer is not None:
             self.refresh_timer.stop()
@@ -783,9 +786,9 @@ class ShannonEntropyApp(App[None]):
             status.update("Status: Stopped")
             analyzer_output.update(self.last_analyzer_text + "\n\nCapture stopped by user.")
             trends_output.update(self.last_trends_text + "\n\nCapture stopped by user.")
-            packet_output.update(self.last_packet_text + "\n\nCapture stopped by user.")
             investigate_output.update(self.last_investigate_text + "\n\nCapture stopped by user.")
             warnings_output.update(self.last_warnings_text + "\n\nCapture stopped by user.")
+
         else:
             status.update("Status: Idle")
 
@@ -950,7 +953,6 @@ class ShannonEntropyApp(App[None]):
             trends_metrics = self.query_one("#trends_metrics", Static)
             analyzer_output = self.query_one("#analyzer_output", Static)
             trends_output = self.query_one("#trends_output", Static)
-            packet_output = self.query_one("#packet_output", Static)
             investigate_output = self.query_one("#investigate_output", Static)
             warnings_output = self.query_one("#warnings_output", Static)
             status = self.query_one("#status", Label)
@@ -959,6 +961,7 @@ class ShannonEntropyApp(App[None]):
             protocol_log = self.query_one("#protocol_log", ProtocolLog)
         except Exception:
             return
+
 
         warnings_output = self.query_one("#warnings_output", Static)
         status = self.query_one("#status", Label)
@@ -988,9 +991,9 @@ class ShannonEntropyApp(App[None]):
             trends_metrics.update("Key Metrics\n-----------\nAwaiting packets...")
 
             trends_output.update(trends_text)
-            packet_output.update(packet_text)
             investigate_output.update(investigate_text)
             warnings_output.update(warnings_text)
+
             if self.is_listening:
                 status.update("Status: Listening...")
             return
@@ -1124,9 +1127,9 @@ class ShannonEntropyApp(App[None]):
         analyzer_output.update(analyzer_text)
         trends_metrics.update(format_trends_metrics(self.refresh_history))
         trends_output.update(trends_text)
-        packet_output.update(packet_text)
         investigate_output.update(investigate_text)
         warnings_output.update(warnings_text)
+
 
         if self.is_listening:
             status.update("Status: Listening...")
