@@ -1128,9 +1128,9 @@ class ShannonEntropyApp(App[None]):
             format_shannon_entropy_timeline(self.refresh_history)
             + "\n\n"
             + format_binary_entropy_timeline(self.refresh_history)
-            + "\n\n"
-            + bernoulli_report
         )
+
+
 
         self.query_one("#bernoulli_output", Static).update(bernoulli_report)
 

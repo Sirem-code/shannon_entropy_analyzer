@@ -151,12 +151,12 @@ def format_entropy_summary(result: EntropyResult) -> str:
     """
     return "\n".join(
         [
-            "Entropy Result",
-            "--------------",
+            "Entropy Metrics",
+            "---------------",
             f"H(X): {result.entropy_bits:.6f} bits",
-            f"Normalized H(X): {result.normalized_entropy:.2%}",
         ]
     )
+
 
 
 def format_entropy_report(result: EntropyResult) -> str:
