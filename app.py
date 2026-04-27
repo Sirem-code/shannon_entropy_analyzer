@@ -654,6 +654,7 @@ class ShannonEntropyApp(App[None]):
                             yield Label("Feed Control", classes="section-title")
                             yield Switch(id="inspector_freeze", value=False)
                             yield Label("Freeze Feed", classes="label-muted")
+                            yield Button("Clear Feed", id="clear_inspector")
                             
                             yield Label("Selection", classes="section-title")
                             yield Static("Select a packet to see details.", id="inspector_selection_info")
@@ -755,6 +756,9 @@ class ShannonEntropyApp(App[None]):
         if event.button.id == "resolve_hostnames":
             self.query_one("#inspector_hostname_info").update("[dim]Resolving...[/]")
             self.run_worker(self.perform_hostname_resolution, thread=True)
+            return
+        if event.button.id == "clear_inspector":
+            self.clear_inspector()
             return
 
     def action_toggle_analyze(self) -> None:
@@ -1405,6 +1409,21 @@ class ShannonEntropyApp(App[None]):
     def _update_hostname_info(self, src: str, dst: str) -> None:
         info = f"[b]Source:[/b] [cyan]{src}[/]\n[b]Dest:[/b]   [cyan]{dst}[/]"
         self.query_one("#inspector_hostname_info").update(info)
+
+    def clear_inspector(self) -> None:
+        """Clears the packet inspector table and internal summary buffer."""
+        table = self.query_one("#inspector_table", DataTable)
+        table.clear()
+        self.packet_summaries.clear()
+        
+        self.selected_source_ip = ""
+        self.selected_dest_ip = ""
+        self.query_one("#lookup_src", Button).disabled = True
+        self.query_one("#lookup_dst", Button).disabled = True
+        self.query_one("#resolve_hostnames", Button).disabled = True
+        self.query_one("#inspector_hostname_info").update("")
+        self.query_one("#inspector_details", Static).update("Click a packet above to decode its layers.")
+        self.query_one("#inspector_selection_info", Static).update("Select a packet to see details.")
 
 
 if __name__ == "__main__":
