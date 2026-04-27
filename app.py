@@ -128,6 +128,7 @@ class IPLookupScreen(ModalScreen):
             yield Button("Close", id="close_lookup", variant="primary")
 
     def on_mount(self) -> None:
+        self.border_title = "IP Intelligence"
         self.run_worker(self.perform_lookup, thread=True)
 
     def perform_lookup(self) -> None:
@@ -308,6 +309,17 @@ class ShannonEntropyApp(App[None]):
         align: left middle;
     }
 
+    .inspector-row {
+        height: 3;
+        margin-bottom: 3;
+        align: left middle;
+        padding-left: 1;
+    }
+
+    .inspector-row Switch {
+        margin-right: 2;
+    }
+
     .label-muted {
         color: $text-muted;
         width: 1fr;
@@ -449,13 +461,19 @@ class ShannonEntropyApp(App[None]):
         background: $background;
     }
 
+    IPLookupScreen {
+        align: center middle;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
     #lookup_modal {
-        width: 60;
+        width: 65;
         height: auto;
         background: $surface;
         border: thick $primary;
         padding: 1 2;
-        align: center middle;
+        border-title-align: center;
+        border-title-style: bold;
     }
 
     #lookup_title {
@@ -471,6 +489,14 @@ class ShannonEntropyApp(App[None]):
         padding: 1;
         background: $background;
         border: solid $border;
+        color: $primary-light;
+        height: auto;
+    }
+
+    #lookup_status {
+        width: 100%;
+        text-align: center;
+        margin-top: 1;
     }
     """
 
@@ -652,8 +678,9 @@ class ShannonEntropyApp(App[None]):
                     with Horizontal(classes="dashboard-container"):
                         with Vertical(classes="sidebar"):
                             yield Label("Feed Control", classes="section-title")
-                            yield Switch(id="inspector_freeze", value=False)
-                            yield Label("Freeze Feed", classes="label-muted")
+                            with Horizontal(classes="inspector-row"):
+                                yield Switch(id="inspector_freeze", value=False)
+                                yield Label("Freeze Feed", classes="label-muted")
                             yield Button("Clear Feed", id="clear_inspector")
                             
                             yield Label("Selection", classes="section-title")
@@ -816,6 +843,15 @@ class ShannonEntropyApp(App[None]):
                     self.query_one("#lookup_dst", Button).disabled = False
                     self.query_one("#resolve_hostnames", Button).disabled = False
                     self.query_one("#inspector_hostname_info").update("")
+            except Exception:
+                pass
+        elif event.data_table.id == "security_events_table":
+            try:
+                row_data = event.data_table.get_row(event.row_key)
+                # Source IP is at index 3 based on add_columns("Time", "Severity", "Type", "Source IP", "Description")
+                source_ip = str(row_data[3])
+                if source_ip and source_ip != "unknown":
+                    self.push_screen(IPLookupScreen(source_ip))
             except Exception:
                 pass
 
