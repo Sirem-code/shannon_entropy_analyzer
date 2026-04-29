@@ -5,6 +5,8 @@ A modern, terminal-based user interface (TUI) for real-time network traffic anal
 ## Overview
 The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and calculates the Shannon Entropy of the protocol mix in real-time. By observing the diversity of packets, it can intelligently identify when your network state shifts from its normal baseline.
 
+## Screenshot
+
 ![image_alt](https://github.com/Sirem-code/shannon_entropy_analyzer/blob/2ef0f32fc9dcd9dc5d06a1268cb8595abafed50d/Screenshot%202026-04-29%20101045.png)
 
 ## Key Features
