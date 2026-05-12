@@ -1,5 +1,5 @@
 ('C:\\Users\\User\\Documents\\Codebase\\shannon_entropy_calc\\dist\\SEA.exe',
- False,
+ True,
  False,
  False,
  ['C:\\Users\\User\\Documents\\Codebase\\shannon_entropy_calc\\darth.ico'],
@@ -285,8 +285,8 @@
  [],
  False,
  False,
- 1778613672,
- [('runw.exe',
-   'C:\\Users\\User\\AppData\\Roaming\\Python\\Python314\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\runw.exe',
+ 1778613755,
+ [('run.exe',
+   'C:\\Users\\User\\AppData\\Roaming\\Python\\Python314\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\run.exe',
    'EXECUTABLE')],
  'C:\\Python314\\python314.dll')
