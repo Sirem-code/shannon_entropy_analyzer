@@ -1,4 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules
+
+
 
 
 a = Analysis(
@@ -6,7 +9,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=collect_submodules('textual.widgets'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
