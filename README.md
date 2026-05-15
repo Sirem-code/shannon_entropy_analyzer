@@ -66,3 +66,6 @@ python app.py
 ## Credits
 - **Developer**: Sirem
 - **GitHub**: [Sirem-code](https://github.com/Sirem-code)
+
+## License
+See the [LISENCE](https://github.com/Sirem-code/shannon_entropy_analyzer/blob/main/LICENSE) file for license rights and limitations (GNU).
