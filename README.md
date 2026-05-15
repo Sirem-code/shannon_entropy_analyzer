@@ -39,6 +39,20 @@ pip install scapy textual
 python app.py --interface "Wi-Fi"
 ```
 
+## Building from Source
+Commands to build the executable file in windows:
+
+1. Install PyInstaller:
+```bash
+pip install pyinstaller
+```
+
+2. Run PyInstaller with the provided spec file:
+```bash
+pyinstaller app.spec
+```
+The resulting executable (`SEA.exe`) will be located in the `dist/` directory.
+
 ## Running Tests
 The project includes a comprehensive unit test suite to ensure mathematical accuracy and security detection reliability.
 
