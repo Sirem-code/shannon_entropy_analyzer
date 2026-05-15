@@ -9,7 +9,7 @@ The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and 
 
 ![image_alt](https://github.com/Sirem-code/shannon_entropy_analyzer/blob/2ef0f32fc9dcd9dc5d06a1268cb8595abafed50d/Screenshot%202026-04-29%20101045.png)
 
-## Key Features
+## Features
 - **Live Packet Sniffing**: Real-time traffic capture with customizable BPF filters (e.g., `tcp`, `port 443`).
 - **Dynamic Shift Detection**: Automatically calculates rolling baselines and detects statistically significant deviations in packet rates and entropy.
 - **Security Intelligence (DPI)**: 
