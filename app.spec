@@ -38,5 +38,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['darth.ico'],
+    icon=['assets/darth.ico'],
 )

@@ -1,5 +1,5 @@
 import unittest
-from analysis import compute_shannon_entropy, to_bernoulli_from_symbol_stream
+from src.analysis import compute_shannon_entropy, to_bernoulli_from_symbol_stream
 
 class TestAnalysis(unittest.TestCase):
     def test_shannon_entropy_balanced(self):

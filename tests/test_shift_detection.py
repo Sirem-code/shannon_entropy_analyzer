@@ -1,6 +1,6 @@
 import unittest
-from models import RefreshSnapshot
-from shift_detection import detect_shift
+from src.models import RefreshSnapshot
+from src.shift_detection import detect_shift
 
 class TestShiftDetection(unittest.TestCase):
     def test_no_shift_on_stable_baseline(self):

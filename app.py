@@ -82,10 +82,10 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Footer, Header, Input, Label, Static, TabbedContent, TabPane, DataTable, Collapsible, Switch, Select, RadioSet, RadioButton
 
-from analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
-from capture import AsyncSniffer, detect_default_interface, packet_to_symbol, packet_to_summary
-from exporters import export_refresh_history_csv, export_refresh_history_matlab_m
-from formatters import (
+from src.analysis import binary_entropy, compute_shannon_entropy, dominant_symbol, to_bernoulli_from_symbol_stream
+from src.capture import AsyncSniffer, detect_default_interface, packet_to_symbol, packet_to_summary
+from src.exporters import export_refresh_history_csv, export_refresh_history_matlab_m
+from src.formatters import (
     about_text,
     format_bernoulli_report,
     format_binary_entropy_timeline,
@@ -102,11 +102,11 @@ from formatters import (
     format_warning_queue,
 )
 
-from models import RefreshSnapshot, WarningEvent, PacketSummary
-from shift_detection import detect_shift
+from src.models import RefreshSnapshot, WarningEvent, PacketSummary
+from src.shift_detection import detect_shift
 
-from threats import ThreatScanner, format_threat_summary
-from lookup import lookup_ip, IPLookupResult
+from src.threats import ThreatScanner, format_threat_summary
+from src.lookup import lookup_ip, IPLookupResult
 from textual.screen import ModalScreen
 
 

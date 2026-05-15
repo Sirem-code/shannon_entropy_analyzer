@@ -7,7 +7,7 @@ The Shannon Entropy Analyzer monitors your network interfaces using `scapy` and 
 
 ## Screenshot
 
-![image_alt](https://github.com/Sirem-code/shannon_entropy_analyzer/blob/2ef0f32fc9dcd9dc5d06a1268cb8595abafed50d/Screenshot%202026-04-29%20101045.png)
+![Shannon Entropy Analyzer Interface](assets/screenshot.png)
 
 ## Key Features
 - **Live Packet Sniffing**: Real-time traffic capture with customizable BPF filters (e.g., `tcp`, `port 443`).
@@ -42,9 +42,9 @@ python app.py --interface "Wi-Fi"
 ## Building from Source
 Commands to build the executable file in windows:
 
-1. Install PyInstaller:
+1. Install PyInstaller and dependencies:
 ```bash
-pip install pyinstaller
+pip install -r requirements.txt pyinstaller
 ```
 
 2. Run PyInstaller with the provided spec file:
