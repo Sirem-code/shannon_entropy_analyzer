@@ -78,7 +78,7 @@ python app.py
 - **Settings & Rules**: Navigate to the "Alert Rules" tab to configure detection thresholds.
 
 ## Credits
-- **Developer**: Sirem
+- **Developer**: Ermis Panagiotis Sofos
 - **GitHub**: [Sirem-code](https://github.com/Sirem-code)
 
 ## License
