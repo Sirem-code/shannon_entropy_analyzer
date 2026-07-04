@@ -1096,7 +1096,7 @@ class ShannonEntropyApp(App[None]):
             trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
             return
 
-        export_dir = Path.cwd() / "exports"
+        export_dir = Path(__file__).parent / "exports"
         try:
             output_path = export_refresh_history_csv(self.refresh_history, output_dir=str(export_dir)).resolve()
             trends_output.update(
@@ -1119,7 +1119,7 @@ class ShannonEntropyApp(App[None]):
             trends_output.update(self.last_trends_text + "\n\nExport skipped: no refresh history to export.")
             return
 
-        export_dir = Path.cwd() / "exports"
+        export_dir = Path(__file__).parent / "exports"
         try:
             output_path = export_refresh_history_matlab_m(self.refresh_history, output_dir=str(export_dir)).resolve()
             trends_output.update(
